@@ -1,0 +1,93 @@
+    NAME
+        enrimo - Examine the influence of an enriched/depleted Mo isotope
+
+    SYNOPSIS
+        perl enrimo.pl [-target=mo_tar ...] [-isotope=mass_num] [-enri=range]
+                       [-dcc_init=enri] [-verbose]
+                       [-yield_for=file] [-pwm_for=enri ...] [-overwrite]
+                       [-nopause]
+
+    DESCRIPTION
+        This program generates data files for investigating the influence of
+        an enriched or depleted Mo isotope on Mo targets and elemental Mo.
+        The following quantities, as functions of the enrichment ratio (i.e.
+        the mass fraction) of the Mo isotope of interest, are generated
+        for each of the Mo targets designated:
+        - Mass fraction of elemental Mo
+        - Mass and number densities of the Mo target in question
+          and the associated elemental Mo and the Mo isotope of interest
+        - Yield and specific yield of the product radionuclide
+
+    OPTIONS
+        Value separator: the comma (,)
+        -target=mo_tar (default: momet)
+            all
+                All of the following mo_tar's.
+            momet
+                Metallic Mo.
+            moo2
+                Mo(IV) oxide (aka Mo dioxide).
+            moo3
+                Mo(VI) oxide (aka Mo trioxide).
+        -isotope=mass_num (default: 100)
+            92
+            94
+            95
+            96
+            97
+            98  <= Mo-98(n,g)Mo-99
+            100 <= Mo-100(g,n)Mo-99, Mo-100(n,2n)Mo-99, Mo-100(p,2n)Tc-99m
+        -enri=range (default: 0,0.01,1)
+            A range of the enrichment ratios.
+            e.g. 0.1,0.5    (beg,end; incre is automatically determined)
+            e.g. 0,0.001,1  (beg,incre,end)
+            e.g. 0,0.0001,1 (beg,incre,end)
+        -dcc_init=enri (default: 0.01)
+            The initial mass fraction of the Mo isotope of interest,
+            with which density change coefficients (DCCs) will be calculated
+            for the enrichment ratios designated.
+            The number of decimal places must be the same as -enri=range.
+            For example:
+            (Valid)   -enri=0,0.0001,1 -dcc_init=0.1015
+            (Invalid) -enri=0,0.001,1  -dcc_init=0.1015
+        -verbose
+            Display the process of isotopic enrichment and
+            its effects in real time.
+        -yield_for=file
+            An input file describing yield calculation conditions.
+            Sample files: gn.enr, n2n.enr, p2n.enr
+        -pwm_for=enri
+            Generate pointwise (or energywise) multiplication reporting files
+            for the designated enrichment ratios.
+            Ignored if -yield_for= has not been given a filename.
+        -overwrite
+            Overwrite existing interpolated xs and MC fluence files.
+            Ignored if -yield_for= has not been given a filename.
+        -nopause
+            The shell is not paused at the end of the program.
+            You may want to use it for a batch run.
+
+    EXAMPLES
+        perl enrimo.pl -target=moo3 -enri=0,0.01,1 -verbose
+        perl enrimo.pl -target=moo3 -enri=0,0.0001,1 -dcc_init=0.1015
+        perl enrimo.pl -target=momet,moo2
+        perl enrimo.pl -target=moo3 -isotope=98 -enri=0,0.001,1 -dcc_init=0.102
+        perl enrimo.pl -yield_for=n2n.enr -enri=0,0.001,1 -dcc_init=0.102
+        perl enrimo.pl -target=all -yield_for=gn.enr -pwm_for=0.1,0.95
+        perl enrimo.pl -yield_for=gn.enr -enri=0,0.0001,1 -pwm_for=0.1014,0.95
+
+    REQUIREMENTS
+        Perl 5, gnuplot, PHITS
+
+    SEE ALSO
+        perl(1), gnuplot(1)
+
+    AUTHOR
+        Jaewoong Jang <jang.comsci@gmail.com>
+
+    COPYRIGHT
+        Copyright (c) 2018 Jaewoong Jang
+
+    LICENSE
+        This software is available under the MIT license;
+        the license information is found in 'LICENSE'.
