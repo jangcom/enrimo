@@ -23,8 +23,8 @@ use constant SCALAR => ref \$0;
 my %prog_info = (
     titl        => basename($0, '.pl'),
     expl        => 'Examine the influence of an enriched/depleted Mo isotope',
-    vers        => 'v1.0.0',
-    date_last   => '2018-10-02',
+    vers        => 'v1.0.1',
+    date_last   => '2018-11-02',
     date_first  => '2018-09-21',
     opts        => { # Command options
         target    => qr/-tar(?:get)?=/i,
@@ -902,8 +902,8 @@ sub parse_calc_conds {
             regex => qr/^\s*beam_curr\s*=\s*/i,
             val   => 1, # uA
         },
-        beam_rad => {
-            regex => qr/^\s*beam_rad\s*=\s*/i,
+        beam_fwhm => {
+            regex => qr/^\s*beam_fwhm\s*=\s*/i,
             val   => 0.3, # cm
         },
         end_of_irr => {
@@ -1003,9 +1003,9 @@ sub parse_calc_conds {
             s/$calc_conds{beam_curr}{regex}//;
             $calc_conds{beam_curr}{val} = $_;
         }
-        if (/$calc_conds{beam_rad}{regex}/) {
-            s/$calc_conds{beam_rad}{regex}//;
-            $calc_conds{beam_rad}{val} = $_;
+        if (/$calc_conds{beam_fwhm}{regex}/) {
+            s/$calc_conds{beam_fwhm}{regex}//;
+            $calc_conds{beam_fwhm}{val} = $_;
         }
         if (/$calc_conds{end_of_irr}{regex}/) {
             s/$calc_conds{end_of_irr}{regex}//;
@@ -1181,7 +1181,7 @@ sub parse_calc_conds {
             $calc_conds{mc_flue_nps}{maxcas}{val},
             $calc_conds{mc_flue_nps}{maxbch}{val},
             $calc_conds{beam_erg}{val},
-            $calc_conds{beam_rad}{val},
+            $calc_conds{beam_fwhm}{val},
             $k, # e.g. momet, moo2, moo3
         );
     }
@@ -1257,7 +1257,7 @@ sub interp_and_read_in_micro_xs {
 sub obtain_and_read_in_mc_flue {
     my(
         $mc_flue_dat_dir, $mc_flue_dat_bname, $emin, $emax, $ne,
-        $reaction, $maxcas, $maxbch, $beam_erg, $beam_rad,
+        $reaction, $maxcas, $maxbch, $beam_erg, $beam_fwhm,
         $k,
     ) = @_;
     
@@ -1470,14 +1470,14 @@ sub obtain_and_read_in_mc_flue {
         say "";
         say "[source]";
         say "proj   = $reactions{$reaction}{proj}";
-        say "s-type = 13";        # Normal distribution over an xy plane
+        say "s-type = 13";         # Normal distribution over an xy plane
         say "e0     = $reactions{$reaction}{proj_erg}"; # Monoenergetic
-        say "x0     = 0";         # x-center coordinate
-        say "y0     = 0";         # y-center coordinate
-        say "r1     = $beam_rad"; # Beam radius in FWHM
-        say "z0     = -5";        # z-beginning coordinate
-        say "z1     = -5";        # z-ending coordinate
-        say "dir    = 1";         # z-axis angle in arccosine
+        say "x0     = 0";          # x-center coordinate
+        say "y0     = 0";          # y-center coordinate
+        say "r1     = $beam_fwhm"; # Beam size in FWHM
+        say "z0     = -5";         # z-beginning coordinate
+        say "z1     = -5";         # z-ending coordinate
+        say "dir    = 1";          # z-axis angle in arccosine
         
         # material section
         say "";
@@ -1914,10 +1914,10 @@ sub write_to_data_files {
                 " Reaction: $memorized{reaction}",
                 "",
                 # Beam parameters
-                " Beam energy:        $memorized{beam_erg} eV",
-                " Beam current:       $memorized{beam_curr} uA",
-                " Beam radius (FWHM): $memorized{beam_rad} cm",
-                " Irradiation time:   $memorized{end_of_irr} h",
+                " Beam energy:       $memorized{beam_erg} eV",
+                " Beam current:      $memorized{beam_curr} uA",
+                " Beam size in FWHM: $memorized{beam_fwhm} cm",
+                " Irradiation time:  $memorized{end_of_irr} h",
                 "",
                 # Converter target
                 $memorized{reaction} !~ /^p/i ? (
@@ -2100,10 +2100,10 @@ sub write_to_pwm_data_files {
                     " Reaction: $memorized{reaction}",
                     "",
                     # Beam parameters
-                    " Beam energy:        $memorized{beam_erg} eV",
-                    " Beam current:       $memorized{beam_curr} uA",
-                    " Beam radius (FWHM): $memorized{beam_rad} cm",
-                    " Irradiation time:   $memorized{end_of_irr} h",
+                    " Beam energy:       $memorized{beam_erg} eV",
+                    " Beam current:      $memorized{beam_curr} uA",
+                    " Beam size in FWHM: $memorized{beam_fwhm} cm",
+                    " Irradiation time:  $memorized{end_of_irr} h",
                     "",
                     # Converter target
                     $memorized{reaction} !~ /^p/i ? (
