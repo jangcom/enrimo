@@ -1,0 +1,7 @@
+v1.0.1
+  - 2018/11/02
+  - Misnomer correction: beam_rad --> beam_fwhm
+
+v1.0.0
+  - 2018/11/01
+  - First release
