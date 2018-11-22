@@ -23,8 +23,8 @@ use constant SCALAR => ref \$0;
 my %prog_info = (
     titl        => basename($0, '.pl'),
     expl        => 'Examine the influence of an enriched/depleted Mo isotope',
-    vers        => 'v1.0.1',
-    date_last   => '2018-11-02',
+    vers        => 'v1.0.2',
+    date_last   => '2018-11-22',
     date_first  => '2018-09-21',
     opts        => { # Command options
         target    => qr/-tar(?:get)?=/i,
@@ -59,6 +59,7 @@ my %prog_info = (
         The following quantities, as functions of the enrichment ratio (i.e.
         the mass fraction) of the Mo isotope of interest, are generated
         for each of the Mo targets designated:
+        - Amount fraction of Mo-100
         - Mass fraction of elemental Mo
         - Mass and number densities of the Mo target in question
           and the associated elemental Mo and the Mo isotope of interest
@@ -114,13 +115,15 @@ my %prog_info = (
             You may want to use it for a batch run.
 
     EXAMPLES
+        perl enrimo.pl -enri=0.10144,0.00001,0.10146 -verbose
         perl enrimo.pl -target=moo3 -enri=0,0.01,1 -verbose
         perl enrimo.pl -target=moo3 -enri=0,0.0001,1 -dcc_init=0.1015
+        perl enrimo.pl -target=moo3 -enri=0,0.00001,1 -dcc_init=0.10146
         perl enrimo.pl -target=momet,moo2
         perl enrimo.pl -target=moo3 -isotope=98 -enri=0,0.001,1 -dcc_init=0.102
         perl enrimo.pl -yield_for=n2n.enr -enri=0,0.001,1 -dcc_init=0.102
-        perl enrimo.pl -target=all -yield_for=gn.enr -pwm_for=0.1,0.95
-        perl enrimo.pl -yield_for=gn.enr -enri=0,0.0001,1 -pwm_for=0.1014,0.95
+        perl enrimo.pl -target=all -yield_for=gn.enr -pwm_for=0.1,0.99
+        perl enrimo.pl -yield_for=gn.enr -enri=0,0.00001,1 -pwm_for=0.10146,0.99
 
     REQUIREMENTS
         Perl 5, gnuplot, PHITS
@@ -151,31 +154,32 @@ my %consts = (
 );
 my %format_specifiers = (
     # Parsed at adjust_num_of_decimal_places()
-    molar_mass     => '%.5f',
-    wgt_molar_mass => '%.5f',
-    avg_molar_mass => '%.5f',
-    mole_frac      => '%.5f',
-    mass_frac      => '%.5f',
-    mass_dens      => '%.5f',
-    num_dens       => '%.5e',
+    molar_mass         => '%.5f', # Experimentally obtained molar mass
+    wgt_molar_mass     => '%.5f', # Weighted molar mass of an isotope
+    wgt_avg_molar_mass => '%.5f', # Weighted-average molar mass of an element
+    avg_molar_mass     => '%.5f', # Average molar mass of a compound
+    amount_frac        => '%.5f',
+    mass_frac          => '%.5f',
+    mass_dens          => '%.5f',
+    num_dens           => '%.5e',
     # Directly used at calc_mo_tar_avg_molar_mass_and_its_subcomp_mass_fracs
-    dcc            => '%.4f',
+    dcc                => '%.4f',
     # Yield-specific
-    yield          => '%.5f',
-    mass           => '%.5f',
-    sp_yield       => '%.5f',
+    yield              => '%.5f',
+    mass               => '%.5f',
+    sp_yield           => '%.5f',
     # Directly used at calc_yield_and_specific_yield()
-    erg_ev         => '%.5e',
-    erg_mega_ev    => '%.5f',
-    xs_micro       => '%.5e',
-    xs_macro       => '%.5e',
-    mc_flues       => '%.5e',
-    pwm_micro      => '%.5e',
-    pwm_macro      => '%.5e',
-    beam_curr      => '%.5f',
-    source_rate    => '%.5e',
-    vol            => '%.5f',
-    reaction_rate  => '%.5e',
+    erg_ev             => '%.5e',
+    erg_mega_ev        => '%.5f',
+    xs_micro           => '%.5e',
+    xs_macro           => '%.5e',
+    mc_flues           => '%.5e',
+    pwm_micro          => '%.5e',
+    pwm_macro          => '%.5e',
+    beam_curr          => '%.5f',
+    source_rate        => '%.5e',
+    vol                => '%.5f',
+    reaction_rate      => '%.5e',
 );
 my(%mo, %tc, %o);
 my(%momet, %moo2, %moo3);
@@ -232,9 +236,9 @@ my $where_prog_began  = getcwd();
 #
 if (@ARGV) {
     show_front_matter(\%prog_info, 'prog', 'auth');
-    validate_argv(\%prog_info, \@ARGV);
-    parse_argv();
-    enrimo();
+    validate_argv(\%prog_info, \@ARGV); # Command-line option validation
+    parse_argv();                       # Command-line option parsing
+    enrimo();                           # The main routine
 }
 elsif (not @ARGV) {
     show_front_matter(\%prog_info, 'usage');
@@ -329,16 +333,19 @@ sub define_chem_data {
     # Chemical elements
     %mo = (
         elem => {
-            name           => 'molybdenum',
-            symb           => 'Mo',
-            avg_molar_mass => 0, # To be calculated
+            name               => 'molybdenum',
+            symb               => 'Mo',
+            mass_frac_sum      => 0, # For mass-fraction weighting
+            wgt_avg_molar_mass => 0, # To be calculated
         },
         # Naturally occurring isotopes
         # > Used for calculations involving isotopic properties such as
-        #   mass and mole fractions and a molar mass.
+        #   a mass fraction, amount fraction, and molar mass.
         # > Put the isotopes in the order of disappearing in the process of
-        #   isotopic enrichment. For example, ascending mass numbers
-        #   reflect the use of centrifuge for isotopic enrichment.
+        #   isotopic enrichment.
+        #   For example, ascending mass numbers make the isotopes
+        #   to be depleted in ascending order of atomic mass
+        #   (i.e. light isotopes are depleted first).
         isotopes => [
             '92',
             '94',
@@ -348,7 +355,7 @@ sub define_chem_data {
             '98',
             '100',
         ],
-        # mole_frac: Natural abundance by "mole" fraction found in
+        # amount_frac: Natural abundance by "amount" fraction found in
         # [1] http://www.ciaaw.org/isotopic-abundances.htm
         # [2] meija2016a.pdf
         # [3] mayer2014.pdf
@@ -358,42 +365,42 @@ sub define_chem_data {
         # [2] wang2017.pdf
         '92' => {
             symb           => 'Mo-92',
-            mole_frac      => 0.14649,
+            amount_frac    => 0.14649,
             mass_frac      => 0,         # To be calculated
             molar_mass     => 91.906807, # g mol^-1
             wgt_molar_mass => 0,         # To be calculated
         },
         '94' => {
             symb           => 'Mo-94',
-            mole_frac      => 0.09187,
+            amount_frac    => 0.09187,
             mass_frac      => 0,
             molar_mass     => 93.905084,
             wgt_molar_mass => 0,
         },
         '95' => {
             symb           => 'Mo-95',
-            mole_frac      => 0.15873,
+            amount_frac    => 0.15873,
             mass_frac      => 0,
             molar_mass     => 94.9058374,
             wgt_molar_mass => 0,
         },
         '96' => {
             symb           => 'Mo-96',
-            mole_frac      => 0.16673,
+            amount_frac    => 0.16673,
             mass_frac      => 0,
             molar_mass     => 95.9046748,
             wgt_molar_mass => 0,
         },
         '97' => {
             symb           => 'Mo-97',
-            mole_frac      => 0.09582,
+            amount_frac    => 0.09582,
             mass_frac      => 0,
             molar_mass     => 96.906017,
             wgt_molar_mass => 0,
         },
         '98' => {
             symb           => 'Mo-98',
-            mole_frac      => 0.24292,
+            amount_frac    => 0.24292,
             mass_frac      => 0,
             molar_mass     => 97.905404,
             wgt_molar_mass => 0,
@@ -408,7 +415,7 @@ sub define_chem_data {
         },
         '100' => {
             symb           => 'Mo-100',
-            mole_frac      => 0.09744,
+            amount_frac    => 0.09744,
             mass_frac      => 0,
             molar_mass     => 99.907468,
             wgt_molar_mass => 0,
@@ -428,16 +435,17 @@ sub define_chem_data {
     
     %o = (
         elem => {
-            name           => 'oxygen',
-            symb           => 'O',
-            avg_molar_mass => 0,
+            name               => 'oxygen',
+            symb               => 'O',
+            mass_frac_sum      => 0,
+            wgt_avg_molar_mass => 0,
         },
         isotopes => [
             '16',
             '17',
             '18',
         ],
-        # mole_frac: Natural abundance by "mole" fraction found in
+        # amount_frac: Natural abundance by "amount" fraction found in
         # [1] http://www.ciaaw.org/isotopic-abundances.htm
         # [2] meija2016a.pdf
         #
@@ -446,21 +454,21 @@ sub define_chem_data {
         # [2] wang2017.pdf
         '16' => {
             symb           => 'O-16',
-            mole_frac      => 0.99757, # Average
+            amount_frac    => 0.99757,
             mass_frac      => 0,
             molar_mass     => 15.994914619,
             wgt_molar_mass => 0,
         },
         '17' => {
             symb           => 'O-17',
-            mole_frac      => 0.0003835,
+            amount_frac    => 0.0003835,
             mass_frac      => 0,
             molar_mass     => 16.999131757,
             wgt_molar_mass => 0,
         },
         '18' => {
             symb           => 'O-18',
-            mole_frac      => 0.002045,
+            amount_frac    => 0.002045,
             mass_frac      => 0,
             molar_mass     => 17.999159613,
             wgt_molar_mass => 0,
@@ -472,7 +480,8 @@ sub define_chem_data {
         mo_tar => {
             name           => "metallic molybdenum",
             symb           => "Mo_{met}",
-            num_moles      => {mo => 1, o => 0},
+            # Amount of substance == number of moles. See the IUPAC Gold Book.
+            amt_subs       => {mo => 1, o => 0},
             avg_molar_mass => 0,     # To be calculated
             mass_dens      => 10.28, # g cm^-3
             num_dens       => 0,     # cm^-3
@@ -482,7 +491,7 @@ sub define_chem_data {
             mass_frac => 0,
             mass_dens => 0,
             num_dens  => 0,
-            mass      => 0, # Assigned at (8); used for specific yield.
+            mass      => 0, # Assigned in (8); used for specific yield.
         },
         # Isotope of interest to be autovivified
     );
@@ -491,7 +500,7 @@ sub define_chem_data {
         mo_tar => {
             name           => "molybdenum dioxide",
             symb           => "MoO_{2}",
-            num_moles      => {mo => 1, o => 2},
+            amt_subs       => {mo => 1, o => 2},
             avg_molar_mass => 0,
             mass_dens      => 6.47,
             num_dens       => 0,
@@ -508,7 +517,7 @@ sub define_chem_data {
         mo_tar => {
             name           => "molybdenum trioxide",
             symb           => "MoO_{3}",
-            num_moles      => {mo => 1, o => 3},
+            amt_subs       => {mo => 1, o => 3},
             avg_molar_mass => 0,
             mass_dens      => 4.69,
             num_dens       => 0,
@@ -546,56 +555,64 @@ sub define_chem_data {
 #    dump(\%mo); dump(\%o);
     #+++++++++++++++++++#
     
-    # (1) Calculate the average molar masses of naturally occurring Mo and O
-    #     using the "mole" fractions of their isotopes taken from IUPAC-CIAAW.
-    calc_elem_avg_molar_mass(\%mo, 'mole_frac', $is_verbose);
-    calc_elem_avg_molar_mass(\%o, 'mole_frac', $is_verbose);
+    # (1) Calculate the weighted-average molar masses of
+    #     naturally occurring Mo and O using the "amount" fractions
+    #     of their isotopes taken from IUPAC-CIAAW.
+    calc_elem_wgt_avg_molar_mass(\%mo, 'amount_frac', $is_verbose);
+    calc_elem_wgt_avg_molar_mass(\%o, 'amount_frac', $is_verbose);
     
-    # (2) Convert mole to mass fractions for (3).
-    convert_fracs(\%mo, 'mole_to_mass');
-    convert_fracs(\%o, 'mole_to_mass'); # Printing purpose only
+    # (2) Convert amount fractions to mass fractions for (3).
+    convert_fracs(\%mo, 'amt_to_mass', $is_verbose);
+    convert_fracs(\%o, 'amt_to_mass', $is_verbose);
     
     #++++ Debugging ++++#
 #    dump(\%mo); dump(\%o);
     #+++++++++++++++++++#
     
-    # (3) Redistribute the mass fractions of Mo isotopes to reflect
-    #     enrichment or depletion of the Mo isotope of interest.
+    # (3) Redistribute the mass fractions of Mo isotopes converted in (2)
+    #     to reflect enrichment or depletion of the Mo isotope of interest.
     enrich_or_deplete(\%mo, $mo_isot_of_int, $enri_of_int, $is_verbose);
     
-    # (4) Again calculate the average molar mass of Mo element, but now
-    #     using the "new mass" fractions of Mo isotopes calculated at (3).
-    #     > The resulting average molar mass of Mo element is slightly
-    #       different from the mole-fraction-weighted one calculated at (1).
-    #       For example, for naturally occurring Mo, the average molar mass
-    #       is calculated to be 95.95 g mol^-1 for mole-fraction weighting,
-    #       but 96.01 g mol^-1 for mass-fraction weighting.
-    #     > To eliminate this inconsistency, I have tried obtaining a new
-    #       average molar mass of Mo element by using the mole fraction
-    #       as the weighting fraction, as in (1). To do so, I have first
-    #       converted the redistributed mass fractions to mole fractions.
-    #       This, however, resulted in a total mole fraction less than 1,
-    #       because the mass-to-mole fraction conversion of isotopes,
-    #       or vice versa, depends on the average molar mass of the element.
-    #     > Please be aware, accordingly, that, the average molar mass of
-    #       Mo element obtained by the following routine call will be slightly
-    #       different from the one obtained by mole-fraction weighting.
-    calc_elem_avg_molar_mass(\%mo, 'mass_frac', $is_verbose);
+    # (4) Again calculate the weighted-average molar mass of Mo element, but now
+    #     weighted by the "mass" fractions of Mo isotopes calculated in (3).
+    #     > The resulting weighted-average molar mass of a Mo element is
+    #       slightly different from the amount-fraction-weighted one
+    #       calculated in (1).
+    #       For example, the amount-fraction-weighted average molar mass of
+    #       a naturally occurring Mo element is
+    #       95.948777194956  g mol^-1, while the mass-fraction-weighted one is
+    #       95.9487754603931 g mol^-1.
+    #     > The influences of such small differences should be marginal,
+    #       but might not be negligible.
+    #     > An alternative is to use the amount fraction
+    #       as the enrichment ratio, in which case we will be able to
+    #         > skip the amount-to-mass-fractions conversion in (2),
+    #         > redistribute the amount fractions of Mo isotopes in (3), and
+    #         > calculate the weighted-average molar mass of the Mo element
+    #           in (4).
+    #     > As of v1.0.2 (2018-11-15), however, the author continues to
+    #       use the mass fraction for denoting the enrichment ratio,
+    #       to be consistent with the definition of U-235 enrichment ratio
+    #       and to ease the calculations of density quantities.
+    #     > A possible future update may be the option for choosing
+    #       which fractional quantity to use to refer to an enrichment ratio.
+    calc_elem_wgt_avg_molar_mass(\%mo, 'mass_frac', $is_verbose);
     
-    # (5) Convert mass to mole fractions (printing purpose only).
-    convert_fracs(\%mo, 'mass_to_mole');
+    # (5) Convert mass fractions to amount fractions for comparison purposes.
+    convert_fracs(\%mo, 'mass_to_amt', $is_verbose);
     
     #++++ Debugging ++++#
 #    dump(\%mo); dump(\%o);
     #+++++++++++++++++++#
     
     # (6) Calculate:
-    #     > Average molar masses of Mo targets using the average molar mass of
-    #       O obtained at (1) and the average molar mass of Mo obtained at (4)
+    #     > Average molar masses of Mo targets using the weighted-average
+    #       molar mass of O obtained in (1) and that of Mo obtained in (4)
     #     > Mass fractions of the associated Mo elements using the average
     #       molar masses of Mo targets
-    #     Associate the following to the hash of Mo targets:
-    #     > Mass fractions of the associated Mo isotope of interest
+    #     Subsequently, associate the following to the hash of Mo targets:
+    #     > Mass fraction and amount fraction of
+    #       the associated Mo isotope of interest
     calc_mo_tar_avg_molar_mass_and_its_subcomp_mass_fracs(
         \@mo_targets_of_int,
         $enri_of_int,
@@ -662,10 +679,11 @@ sub define_chem_data {
     
     # (10) Construct row-wise data for write_to_data_files().
     foreach my $k (@mo_targets_of_int) {
-        # 13 columns
+        # 14 columns
         if ($yield_for) {
             push @{$data_array_refs{$k}},
                 $mo_targets{$k}{'mo_'.$mo_isot_of_int}{mass_frac},
+                $mo_targets{$k}{'mo_'.$mo_isot_of_int}{amount_frac},
                 $mo_targets{$k}{mo_elem}{mass_frac},
                 $mo_targets{$k}{mo_tar}{mass_dens},
                 $mo_targets{$k}{mo_tar}{num_dens},
@@ -681,10 +699,11 @@ sub define_chem_data {
                 $mo_targets{$k}{mo_elem}{mass}, # Used for specific yield
                 $mo_targets{$k}{$calc_conds{product_nucl}{key}}{sp_yield};
         }
-        # 9 columns: "Without" yield, Mo target mass, and specific yield
+        # 10 columns: "Without" yield, Mo target mass, and specific yield
         elsif (not $yield_for) {
             push @{$data_array_refs{$k}},
                 $mo_targets{$k}{'mo_'.$mo_isot_of_int}{mass_frac},
+                $mo_targets{$k}{'mo_'.$mo_isot_of_int}{amount_frac},
                 $mo_targets{$k}{mo_elem}{mass_frac},
                 $mo_targets{$k}{mo_tar}{mass_dens},
                 $mo_targets{$k}{mo_tar}{num_dens},
@@ -698,34 +717,71 @@ sub define_chem_data {
 }
 
 
-sub calc_elem_avg_molar_mass {
+sub calc_elem_wgt_avg_molar_mass {
     my($hash_ref_to_elem, $weighting_frac, $_is_verbose) = @_;
     
     if ($_is_verbose) {
         printf(
             "\n%s()\n".
-            "calculating the average molar mass of [%s]...\n\n",
+            "calculating the weighted-average molar mass of [%s] ".
+            "weighted by [%s]...\n\n",
             join('::', (caller(0))[0, 3]),
-            $hash_ref_to_elem->{elem}{symb},
+            $hash_ref_to_elem->{elem}{symb}, $weighting_frac,
         );
     }
     
-    # Calculate the average molar mass of a chemical element
-    # by adding up "weighted" molar masses of its isotopes.
+    #
+    # Calculate the weighted-average molar mass of a chemical element
+    # by adding up the "weighted" molar masses of its isotopes.
+    #
     
-    # Initialization
-    $hash_ref_to_elem->{elem}{avg_molar_mass} = 0;
+    # Initializations
+    $hash_ref_to_elem->{elem}{wgt_avg_molar_mass} = 0; # Used for (i) and (ii)
+    $hash_ref_to_elem->{elem}{mass_frac_sum}      = 0; # Used for (ii)
     
-    foreach my $isot (@{$hash_ref_to_elem->{isotopes}}) {
-        # (1) Weight the molar mass of an isotope by $weighting_frac.
-        $hash_ref_to_elem->{$isot}{wgt_molar_mass} =
-            $hash_ref_to_elem->{$isot}{$weighting_frac}
-            * $hash_ref_to_elem->{$isot}{molar_mass};
-        
-        # (2) Cumulative sum of the weighted molar masses, which will
-        #     in turn be the average molar mass of the element.
-        $hash_ref_to_elem->{elem}{avg_molar_mass} +=
-            $hash_ref_to_elem->{$isot}{wgt_molar_mass};
+    # (i) "Amount"-fraction weighting: Weighted "arithmetic" mean
+    if ($weighting_frac eq 'amount_frac') {
+        foreach my $isot (@{$hash_ref_to_elem->{isotopes}}) {
+            # (1) Weight the molar mass of an isotope by $weighting_frac.
+            #     => Weight by "multiplication"
+            $hash_ref_to_elem->{$isot}{wgt_molar_mass} =
+                $hash_ref_to_elem->{$isot}{$weighting_frac}
+                * $hash_ref_to_elem->{$isot}{molar_mass};
+            
+            # (2) Cumulative sum of the weighted molar masses of the isotopes,
+            #     which will in turn become the weighted-average molar mass
+            #     of the element.
+            $hash_ref_to_elem->{elem}{wgt_avg_molar_mass} +=
+                $hash_ref_to_elem->{$isot}{wgt_molar_mass};
+        }
+        # No further step :)
+    }
+    
+    # (ii) "Mass"-fraction weighting: Weighted "harmonic" mean
+    elsif ($weighting_frac eq 'mass_frac') {
+        foreach my $isot (@{$hash_ref_to_elem->{isotopes}}) {
+            # (1) Cumulative sum of the mass fractions of the isotopes.
+            #     => Will be the numerator in (4).
+            #     => The final result of the cumulative sum, in principle,
+            #        should be 1.
+            $hash_ref_to_elem->{elem}{mass_frac_sum} +=
+              $hash_ref_to_elem->{$isot}{$weighting_frac};
+            
+            # (2) Weight the molar mass of an isotope by $weighting_frac.
+            #     => Weight by "division"
+            $hash_ref_to_elem->{$isot}{wgt_molar_mass} =
+                $hash_ref_to_elem->{$isot}{$weighting_frac}
+                / $hash_ref_to_elem->{$isot}{molar_mass};
+            
+            # (3) Cumulative sum of the weighted molar masses of the isotopes
+            #     => Will be the denominator in (4).
+            $hash_ref_to_elem->{elem}{wgt_avg_molar_mass} +=
+                $hash_ref_to_elem->{$isot}{wgt_molar_mass};
+        }
+        # (4) Evaluate the fraction.
+        $hash_ref_to_elem->{elem}{wgt_avg_molar_mass} =
+            $hash_ref_to_elem->{elem}{mass_frac_sum} # Should be 1 in principle.
+            / $hash_ref_to_elem->{elem}{wgt_avg_molar_mass};
     }
     
     if ($_is_verbose) {
@@ -736,29 +792,40 @@ sub calc_elem_avg_molar_mass {
 
 
 sub convert_fracs {
-    my($hash_ref_to_elem, $conv_mode) = @_;
+    my($hash_ref_to_elem, $conv_mode, $_is_verbose) = @_;
     
-    # Mole to mass fractions
-    # > enri_pmb.pdf
-    # > https://en.wikipedia.org/wiki/Mole_fraction
-    if ($conv_mode =~ /mole_to_mass/i) {
+    if ($_is_verbose) {
+        printf(
+            "\n%s()\n".
+            "converting the fractional quantity of [%s] as [%s]...\n\n",
+            join('::', (caller(0))[0, 3]),
+            $hash_ref_to_elem->{elem}{symb}, $conv_mode,
+        );
+    }
+    
+    # Amount to mass fractions
+    if ($conv_mode =~ /amt_to_mass/i) {
         foreach my $isot (@{$hash_ref_to_elem->{isotopes}}) {
             $hash_ref_to_elem->{$isot}{mass_frac} =
-                $hash_ref_to_elem->{$isot}{mole_frac}
+                $hash_ref_to_elem->{$isot}{amount_frac}
                 * $hash_ref_to_elem->{$isot}{molar_mass}
-                / $hash_ref_to_elem->{elem}{avg_molar_mass}
+                / $hash_ref_to_elem->{elem}{wgt_avg_molar_mass}
         }
     }
     
-    # Mass to mole fractions
-    # > https://en.wikipedia.org/wiki/Mass_fraction_(chemistry)
-    elsif ($conv_mode =~ /mass_to_mole/i) {
+    # Mass to amount fractions
+    elsif ($conv_mode =~ /mass_to_amt/i) {
         foreach my $isot (@{$hash_ref_to_elem->{isotopes}}) {
-            $hash_ref_to_elem->{$isot}{mole_frac} =
+            $hash_ref_to_elem->{$isot}{amount_frac} =
                 $hash_ref_to_elem->{$isot}{mass_frac}
-                * $hash_ref_to_elem->{elem}{avg_molar_mass}
+                * $hash_ref_to_elem->{elem}{wgt_avg_molar_mass}
                 / $hash_ref_to_elem->{$isot}{molar_mass};
         }
+    }
+    
+    if ($_is_verbose) {
+        dump($hash_ref_to_elem);
+        pause_shell("Press enter to continue...");
     }
 }
 
@@ -777,30 +844,34 @@ sub calc_mo_tar_avg_molar_mass_and_its_subcomp_mass_fracs {
         }
         
         # (1) Calculate the average molar mass of a Mo target, which depends on
-        #     > The average molar mass of its element, which is changed
+        #     > the weighted-average molar mass of its element, which is changed
         #       when the isotopic composition of the element is changed.
         #       e.g. Mo-100 enrichment
-        #     > The number of moles of oxygen:
+        #     > The amount of oxygen in mole:
         #       0 for metallic Mo => Mo target mass == Mo mass
         #       2 for MoO2        => Mo target mass >  Mo mass
         #       3 for MoO3        => Mo target mass >> Mo mass
         $mo_targets{$k}{mo_tar}{avg_molar_mass} =
             (
-                $mo_targets{$k}{mo_tar}{num_moles}{mo}
-                * $mo{elem}{avg_molar_mass} # <= Affected by Mo-100 enrichment
+                $mo_targets{$k}{mo_tar}{amt_subs}{mo}
+                * $mo{elem}{wgt_avg_molar_mass} # Affected by Mo-100 enrichment
             ) + (
-                $mo_targets{$k}{mo_tar}{num_moles}{o} # <= Mo target-dependent
-                * $o{elem}{avg_molar_mass}
+                $mo_targets{$k}{mo_tar}{amt_subs}{o} # Mo target-dependent
+                * $o{elem}{wgt_avg_molar_mass}
             );
         
-        # (2) Using the average molar mass of the Mo target obtained at (1),
+        # (2) Using the average molar mass of the Mo target obtained in (1),
         #     calculate the mass fraction of its Mo element.
         $mo_targets{$k}{mo_elem}{mass_frac} =
-            $mo{elem}{avg_molar_mass} / $mo_targets{$k}{mo_tar}{avg_molar_mass};
+            $mo{elem}{wgt_avg_molar_mass}
+            / $mo_targets{$k}{mo_tar}{avg_molar_mass};
         
-        # (3) Associate the mass fraction of the Mo isotope of interest.
+        # (3) Associate the mass fraction and amount fraction of
+        #     the Mo isotope of interest.
         $mo_targets{$k}{'mo_'.$mo_isot_of_int}{mass_frac} = # Autovivification
             $mo{$mo_isot_of_int}{mass_frac};
+        $mo_targets{$k}{'mo_'.$mo_isot_of_int}{amount_frac} = # Autovivification
+            $mo{$mo_isot_of_int}{amount_frac};
         
         if ($_is_verbose) {
             dump(\$mo_targets{$k}{mo_tar});
@@ -874,7 +945,7 @@ sub calc_mass_and_num_dens {
         $mo_targets{$k}{mo_elem}{num_dens} =
             $mo_targets{$k}{mo_elem}{mass_dens}
             * $consts{avogadro}
-            / $mo{elem}{avg_molar_mass};
+            / $mo{elem}{wgt_avg_molar_mass};
         # Mo isotope of interest
         $mo_targets{$k}{'mo_'.$mo_isot_of_int}{num_dens} =
             $mo_targets{$k}{'mo_'.$mo_isot_of_int}{mass_dens}
@@ -1415,9 +1486,9 @@ sub obtain_and_read_in_mc_flue {
             rad        => $mo_targets{$k}{mo_tar}{rad},
             vol        => $mo_targets{$k}{mo_tar}{vol},
             comp       => $k =~ /momet/i ?
-                "Mo $mo_targets{$k}{mo_tar}{num_moles}{mo}" :
-                "Mo $mo_targets{$k}{mo_tar}{num_moles}{mo}".
-                " O $mo_targets{$k}{mo_tar}{num_moles}{o}",
+                "Mo $mo_targets{$k}{mo_tar}{amt_subs}{mo}" :
+                "Mo $mo_targets{$k}{mo_tar}{amt_subs}{mo}".
+                " O $mo_targets{$k}{mo_tar}{amt_subs}{o}",
         },
         mc_calc_world => {
             mat_id     => 0, # The "inner" void; PHITS p. 136
@@ -1797,7 +1868,7 @@ sub calc_yield_and_specific_yield {
         
         #
         # (2) Multiply the components outside the integral with
-        #     the PWM obtained at (1), which will
+        #     the PWM obtained in (1), which will
         #     then be the yield of the product radionuclide.
         #
         # $calc_conds{product_nucl}: e.g. $mo{'99'}, $tc{'99m'}
@@ -1948,10 +2019,11 @@ sub write_to_data_files {
             ] : [],
         },
         { # Columnar
-            size     => $yield_for ? 13 : 9, # Used for column size validation
+            size     => $yield_for ? 14 : 10, # Used for column size validation
             heads    => $yield_for ?
                 [
                     "Mass fraction of $mo{$mo_isot_of_int}{symb}",
+                    "Amount fraction of $mo{$mo_isot_of_int}{symb}",
                     "Mass fraction of $mo{elem}{symb}",
                     "Mass density of $mo_targets{$k}{mo_tar}{symb}",
                     "Number density of $mo_targets{$k}{mo_tar}{symb}",
@@ -1973,6 +2045,7 @@ sub write_to_data_files {
                     ),
                 ] : [
                     "Mass fraction of $mo{$mo_isot_of_int}{symb}",
+                    "Amount fraction of $mo{$mo_isot_of_int}{symb}",
                     "Mass fraction of $mo{elem}{symb}",
                     "Mass density of $mo_targets{$k}{mo_tar}{symb}",
                     "Number density of $mo_targets{$k}{mo_tar}{symb}",
@@ -1984,6 +2057,7 @@ sub write_to_data_files {
                 ],
             subheads => $yield_for ?
                 [
+                    "",
                     "",
                     "",
                     "(g cm^{-3})",
@@ -2007,6 +2081,7 @@ sub write_to_data_files {
                             "$memorized{beam_curr}-" : ""
                     ),
                 ] : [
+                    "",
                     "",
                     "",
                     "(g cm^{-3})",
@@ -2080,7 +2155,7 @@ sub write_to_pwm_data_files {
 #                    'yaml',
                 ],
                 rpt_bname => sprintf(
-                    "%s_%s_%s_enri%s",
+                    "%s_%s_%s_%s",
                     $enrimo_flag,
                     $calc_conds{reaction}{val},
                     $k,
@@ -3525,7 +3600,7 @@ sub enrich_or_deplete {
                 );
                 print "\n";
             }
-            # The mass fraction of the isotope of interest has already been 
+            # The mass fraction of the isotope of interest has already been
             # modified above (see +=); jump to the next isotope.
             next;
         }
