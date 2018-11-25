@@ -23,8 +23,8 @@ use constant SCALAR => ref \$0;
 my %prog_info = (
     titl        => basename($0, '.pl'),
     expl        => 'Examine the influence of an enriched/depleted Mo isotope',
-    vers        => 'v1.0.2',
-    date_last   => '2018-11-22',
+    vers        => 'v1.0.3',
+    date_last   => '2018-11-25',
     date_first  => '2018-09-21',
     opts        => { # Command options
         target    => qr/-tar(?:get)?=/i,
@@ -2095,6 +2095,7 @@ sub write_to_data_files {
             data_arr_ref              => $arr_ref_to_data,
 #            sum_idx_multiples         => [3..5], # Can be discrete,
 #            ragged_left_idx_multiples => [2..5], # but must be increasing
+            freeze_panes              => 'D4', # Alt: {row => 3,  col => 3}
             space_bef                 => {gp => " ", tex => " "},
             heads_sep                 => {gp => "|", csv => ","},
             space_aft                 => {gp => " ", tex => " "},
@@ -2245,6 +2246,7 @@ sub write_to_pwm_data_files {
                 data_arr_ref              => $arr_ref_to_data,
                 sum_idx_multiples         => [6..8, 11, 13], # Can be discrete,
 #                ragged_left_idx_multiples => [2..5], # but must be increasing
+                freeze_panes              => 'C4', # Alt: {row => 3,  col => 2}
                 space_bef                 => {gp => " ", tex => " "},
                 heads_sep                 => {gp => "|", csv => ","},
                 space_aft                 => {gp => " ", tex => " "},
@@ -2978,9 +2980,10 @@ sub reduce_data {
             };
             $worksheet = $workbook->add_worksheet() if $@;
             
-            # As of v0.98, a format property can be added in the middle,
-            # but cannot be overridden. The author of this routine therefore
-            # use cellwise formats to specify "ruled" and "aligned" cells.
+            # As of Excel::Writer::XLSX v0.98, a format property
+            # can be added in the middle, but cannot be overridden.
+            # The author of this routine therefore uses cellwise formats
+            # to specify "ruled" and "aligned" cells.
             foreach my $rule (keys %{$_strs{rules}{$_flag}}) {
                 foreach my $align (qw(none left right)) {
                     $xlsx_formats{$rule}{$align}= $workbook->add_format(
@@ -2996,6 +2999,16 @@ sub reduce_data {
 #            dump(\%xlsx_formats);
 #            pause_shell();
             #+++++++++++++++++++#
+            
+            # Panes freezing
+            # Added on 2018-11-23
+            if ($_cols{freeze_panes}) {
+                $worksheet->freeze_panes(
+                    ref $_cols{freeze_panes} eq HASH ?
+                        ($_cols{freeze_panes}{row}, $_cols{freeze_panes}{col}) :
+                        $_cols{freeze_panes}
+                );
+            }
         }
         
         #

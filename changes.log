@@ -1,3 +1,8 @@
+v1.0.3 (2018/11/25)
+  - The routines write_to_data_files() and write_to_pwm_data_files()
+    can now designate a row-col pair or a cell, at which the panes
+    of the output spreadsheet (.xlsx) will be frozen.
+
 v1.0.2 (2018/11/22)
   - The verbose option is also applied to the 'convert_fracs' routine.
   - Subroutine name modification:
