@@ -126,7 +126,9 @@ my %prog_info = (
         perl enrimo.pl -yield_for=gn.enr -enri=0,0.00001,1 -pwm_for=0.10146,0.99
 
     REQUIREMENTS
-        Perl 5, gnuplot, PHITS
+        Perl 5
+            Text::CSV, Excel::Writer::XLSX, JSON, YAML
+        gnuplot, PHITS
 
     SEE ALSO
         perl(1), gnuplot(1)
