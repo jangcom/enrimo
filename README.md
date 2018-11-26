@@ -1,2 +1,2 @@
 # enrimo
-Examine the influence of an enriched/depleted Mo isotope
+Investigate the influence of an enriched/depleted Mo isotope
