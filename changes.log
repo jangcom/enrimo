@@ -1,3 +1,20 @@
+v1.0.4 (2019/04/03)
+  - Source code reorganized
+  - Yield calculation routines removed
+  - Data reduction format 'gp' --> 'dat'
+  - Term changed: enrichment ratio --> enrichment level
+  - The fraction type to refer to the enrichment level can now be selected
+    between amount fraction and mass fraction
+  - Minimum depletion levels (global and local) can be specified
+  - Depletion order can be specified
+  - Amount of Mo element in a Mo target has been added to
+    the equation calculating the mass fraction of the Mo element
+    for clarification.
+  - DCCs are calculated for all the nuclides involved
+    in the Mo target in question
+  - Product nuclides are associated with the calculated DCCs.
+  - Output formats can be designated via the command-line option
+
 v1.0.3 (2018/11/25)
   - The routines write_to_data_files() and write_to_pwm_data_files()
     can now designate a row-col pair or a cell, at which the panes
