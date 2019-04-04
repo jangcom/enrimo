@@ -1,19 +1,20 @@
 NAME
-    enrimo - Examine the influence of an enriched Mo isotope
+    enrimo - Investigate the influence of an enriched Mo isotope
 
 SYNOPSIS
         perl enrimo.pl [-materials=mo_mat ...] [-isotope=mo_isot]
                        [-enri_lev_type=frac_type] [-enri_lev_range=frac_range]
                        [-min_depl_lev_global=enri_lev] [-depl_order=option]
-                       [-inp=fname] [-out_fmts=ext ...] [-projectiles=particle ...]
+                       [-inp=fname] [-out_path=path] [-out_fmts=ext ...]
+                       [-projectiles=particle ...]
                        [-verbose] [-nofm] [-nopause]
 
 DESCRIPTION
-        This program generates datasets for investigating the influence of
+        This Perl program generates datasets for investigating the influence of
         an enriched Mo isotope on its associated Mo material, Mo element,
         and companion isotopes.
         The following quantities, as functions of the enrichment level of
-        the Mo isotope to be enriched, are calculated for Mo materials:
+        the Mo isotope to be enriched, are calculated for a Mo material:
         - Amount fractions and and mass fractions of Mo and O isotopes
         - Mass fractions of Mo and O elements
         - Mass and number densities of the Mo material, Mo and O elements,
@@ -74,6 +75,9 @@ OPTIONS
             An input file specifying the nuclide-specific minimum depletion levels
             and the calculation precision. See the sample input file for the syntax.
             e.g. 0p9739.enr
+
+        -out_path=path (short: -path, default: the value of -isotope)
+            Path for the output files.
 
         -out_fmts=ext ... (short: -o, default: dat,xlsx)
             Output file formats.
