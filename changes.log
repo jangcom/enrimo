@@ -1,4 +1,11 @@
-v1.0.4 (2019/04/03)
+v1.05 (2019/04/04)
+  - 'min_depl_lev_local.mo.97' in the sample input file '0p9739.enr'
+    has been corrected as:
+    min_depl_lev_local.mo.97 = 0.00005
+    --> min_depl_lev_local.mo.97 = 0.00010
+  - The output path can now be specified via the command-line option.
+
+v1.04 (2019/04/03)
   - Source code reorganized
   - Yield calculation routines removed
   - Data reduction format 'gp' --> 'dat'

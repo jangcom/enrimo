@@ -15,8 +15,8 @@ use constant ARRAY  => ref [];
 use constant HASH   => ref {};
 
 
-our $VERSION = '1.04';
-our $LAST    = '2019-04-03';
+our $VERSION = '1.05';
+our $LAST    = '2019-04-04';
 our $FIRST   = '2018-09-21';
 
 
@@ -2320,6 +2320,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
         $enri_lev_range_last,  # 0.9739
         $enri_lev_type,        # 'amt_frac'
         $depl_order,           # 'ascend'
+        $out_path,             # './mo100'
         $projs,                # ['g', 'n', 'p']
         $is_verbose,           # 1 (boolean)
     ) = @_;
@@ -3211,8 +3212,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
     );
     state $is_first = 1; # Hook - onetime on
     foreach my $proj (@$projs) {
-        my $nucls_rpt_path  = "./$enri_nucl";
-        mkdir $nucls_rpt_path if not -e $nucls_rpt_path;
+        mkdir $out_path if not -e $out_path;
         (my $from = $enri_lev_range_first) =~ s/[.]/p/;
         (my $to   = $enri_lev_range_last)  =~ s/[.]/p/;
         my $nucls_rpt_bname = sprintf(
@@ -3229,7 +3229,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             ),
             $proj,
         );
-        my $nucls_rpt_fname = "$nucls_rpt_path/$nucls_rpt_bname.dat";
+        my $nucls_rpt_fname = "$out_path/$nucls_rpt_bname.dat";
         unlink $nucls_rpt_fname if -e $nucls_rpt_fname and $is_first;
         
         open my $nucls_rpt_fh, '>>:encoding(UTF-8)', $nucls_rpt_fname;
@@ -4237,6 +4237,7 @@ sub enri_postproc {
         $enri_lev_range_last,  # 0.9739
         $enri_lev_type,        # 'amt_frac'
         $depl_order,           # 'ascend'
+        $out_path,             # './mo100'
         $projs,                # ['g', 'n', 'p']
         $precision_href,
         $is_verbose,           # 1 (boolean)
@@ -4259,6 +4260,7 @@ sub enri_postproc {
         $enri_lev_range_last,
         $enri_lev_type,
         $depl_order,
+        $out_path,
         $projs,
         $is_verbose,
     );
@@ -4329,6 +4331,13 @@ sub parse_argv {
         if (/$cmd_opts{inp}/) {
             ($run_opts_href->{inp} = $_) =~
                 s/$cmd_opts{inp}//;
+        }
+        
+        # Output path
+        if (/$cmd_opts{out_path}/) {
+            s/$cmd_opts{out_path}//;
+            ($run_opts_href->{out_path} = $_) =~
+                s/$cmd_opts{out_path}//;
         }
         
         # Output formats
@@ -4482,6 +4491,7 @@ sub outer_enri {
                 $run_opts_href->{enri_lev_range}[-1],
                 $run_opts_href->{enri_lev_type},
                 $run_opts_href->{depl_order},
+                $run_opts_href->{out_path},
                 $run_opts_href->{projs},
                 $run_opts_href->{precision_href},
                 $run_opts_href->{is_verbose},
@@ -4521,6 +4531,7 @@ sub inner_enri {
         $enri_lev_range_last,
         $enri_lev_type,
         $depl_order,
+        $out_path,
         $projs,
         $precision_href,
         $is_verbose,
@@ -4553,6 +4564,7 @@ sub inner_enri {
         $enri_lev_range_last,
         $enri_lev_type,
         $depl_order,
+        $out_path,
         $projs,
         $precision_href,
         $is_verbose,
@@ -4630,7 +4642,8 @@ sub write_to_data_files {
             full => 'density change coefficient',
         },
     );
-    my $rpt_path = "./$enri_nucl";
+    $run_opts_href->{out_path} = "./$enri_nucl"
+        if not $run_opts_href->{out_path};
     (my $from = $out_arefs->{$mat}[0]) =~ s/[.]/p/;
     (my $to = $chem_hrefs->{$mat}{$enri_nucl}{$enri_lev_type}) =~ s/[.]/p/;
     my $rpt_bname = sprintf(
@@ -4650,7 +4663,7 @@ sub write_to_data_files {
     reduce_data(
         { # Settings
             rpt_formats => $run_opts_href->{out_fmts},
-            rpt_path    => $rpt_path,
+            rpt_path    => $run_opts_href->{out_path},
             rpt_bname   => $rpt_bname,
             begin_msg   => "collecting data info...",
             prog_info   => $prog_info_href,
@@ -4755,7 +4768,7 @@ sub enrimo {
     if (@ARGV) {
         my %prog_info = (
             titl       => basename($0, '.pl'),
-            expl       => 'Examine the influence of an enriched Mo isotope',
+            expl       => 'Investigate the influence of an enriched Mo isotope',
             vers       => $VERSION,
             date_last  => $LAST,
             date_first => $FIRST,
@@ -4776,6 +4789,7 @@ sub enrimo {
             inp                 => qr/-?-i(?:np)?\s*=\s*/i,
             out_fmts            => qr/-?-o(?:ut)?(?:_fmts)?\s*=\s*/i,
             projs               => qr/-?-proj(?:ectile)?s\s*=\s*/i,
+            out_path            => qr/-?-(?:out_)?path\s*=\s*/i,
             verbose             => qr/-?-verb(?:ose)?/i,
             nofm                => qr/-?-nofm/i,
             nopause             => qr/-?-nopause/i,
@@ -4792,6 +4806,7 @@ sub enrimo {
             inp                 => '',
             out_fmts            => ['dat', 'xlsx'],
             projs               => [],
+            out_path            => '', # If remains empty, enri_nucl'll be used
             is_verbose          => 0,
             is_nofm             => 0,
             is_nopause          => 0,
@@ -4828,23 +4843,24 @@ __END__
 
 =head1 NAME
 
-enrimo - Examine the influence of an enriched Mo isotope
+enrimo - Investigate the influence of an enriched Mo isotope
 
 =head1 SYNOPSIS
 
     perl enrimo.pl [-materials=mo_mat ...] [-isotope=mo_isot]
                    [-enri_lev_type=frac_type] [-enri_lev_range=frac_range]
                    [-min_depl_lev_global=enri_lev] [-depl_order=option]
-                   [-inp=fname] [-out_fmts=ext ...] [-projectiles=particle ...]
+                   [-inp=fname] [-out_path=path] [-out_fmts=ext ...]
+                   [-projectiles=particle ...]
                    [-verbose] [-nofm] [-nopause]
 
 =head1 DESCRIPTION
 
-    This program generates datasets for investigating the influence of
+    This Perl program generates datasets for investigating the influence of
     an enriched Mo isotope on its associated Mo material, Mo element,
     and companion isotopes.
     The following quantities, as functions of the enrichment level of
-    the Mo isotope to be enriched, are calculated for Mo materials:
+    the Mo isotope to be enriched, are calculated for a Mo material:
     - Amount fractions and and mass fractions of Mo and O isotopes
     - Mass fractions of Mo and O elements
     - Mass and number densities of the Mo material, Mo and O elements,
@@ -4906,6 +4922,9 @@ enrimo - Examine the influence of an enriched Mo isotope
         An input file specifying the nuclide-specific minimum depletion levels
         and the calculation precision. See the sample input file for the syntax.
         e.g. 0p9739.enr
+
+    -out_path=path (short: -path, default: the value of -isotope)
+        Path for the output files.
 
     -out_fmts=ext ... (short: -o, default: dat,xlsx)
         Output file formats.
