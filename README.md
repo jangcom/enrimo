@@ -167,6 +167,8 @@
 
 <p><a href="https://github.com/jangcom/enrimo">enrimo on GitHub</a></p>
 
+<p><a href="https://doi.org/10.5281/zenodo.2628760">enrimo on Zenodo</a></p>
+
 <p><a href="https://iopscience.iop.org/article/10.1088/2399-6528/ab1d6b">enrimo in a paper: <i>J. Phys. Commun.</i> <b>3</b>, 055015</a></p>
 
 <h1 id="AUTHOR">AUTHOR</h1>
