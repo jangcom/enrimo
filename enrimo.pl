@@ -16,7 +16,7 @@ use constant HASH   => ref {};
 
 
 our $VERSION = '1.06';
-our $LAST    = '2019-05-20';
+our $LAST    = '2019-10-27';
 our $FIRST   = '2018-09-21';
 
 
