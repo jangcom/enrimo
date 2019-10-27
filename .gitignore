@@ -1,0 +1,28 @@
+# github archive
+github/
+
+# enrimo records
+bak_enrimo.pl/
+enrimo_baker.bat
+updates.txt
+
+# enrimo aux and result files
+figs/
+mo100*/
+old/
+refs/
+utils/
+xs/
+0p9742.enr
+0p99*.enr
+deployer_to_phd_diss_code.bat
+jpap*.bat
+
+# MSWin link files
+*.lnk
+
+# POD-related
+enrimo_usage.bat
+enrimo.html
+pod2htmd.tmp
+enrimo_pod2html.bat

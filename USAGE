@@ -15,7 +15,7 @@ DESCRIPTION
         and companion isotopes.
         The following quantities, as functions of the enrichment level of
         the Mo isotope to be enriched, are calculated for a Mo material:
-        - Amount fractions and and mass fractions of Mo and O isotopes
+        - Amount fractions and mass fractions of Mo and O isotopes
         - Mass fractions of Mo and O elements
         - Mass and number densities of the Mo material, Mo and O elements,
           and their isotopes
@@ -133,8 +133,13 @@ REQUIREMENTS
 SEE ALSO
     enrimo on GitHub <https://github.com/jangcom/enrimo>
 
+    enrimo on Zenodo <https://doi.org/10.5281/zenodo.2628760>
+
+    enrimo in a paper: *J. Phys. Commun.* 3, 055015
+    <https://iopscience.iop.org/article/10.1088/2399-6528/ab1d6b>
+
 AUTHOR
-    Jaewoong Jang <jan9@korea.ac.kr>
+    Jaewoong Jang <jangj@korea.ac.kr>
 
 COPYRIGHT
     Copyright (c) 2018-2019 Jaewoong Jang
