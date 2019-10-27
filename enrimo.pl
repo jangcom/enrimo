@@ -15,20 +15,20 @@ use constant ARRAY  => ref [];
 use constant HASH   => ref {};
 
 
-our $VERSION = '1.05';
-our $LAST    = '2019-04-04';
+our $VERSION = '1.06';
+our $LAST    = '2019-05-20';
 our $FIRST   = '2018-09-21';
 
 
 #----------------------------------My::Toolset----------------------------------
 sub show_front_matter {
     # """Display the front matter."""
-    my $sub_name = join('::', (caller(0))[0, 3]);
-    
+
     my $prog_info_href = shift;
+    my $sub_name = join('::', (caller(0))[0, 3]);
     croak "The 1st arg of [$sub_name] must be a hash ref!"
         unless ref $prog_info_href eq HASH;
-    
+
     # Subroutine optional arguments
     my(
         $is_prog,
@@ -39,7 +39,7 @@ sub show_front_matter {
         $is_no_newline,
         $is_copy,
     );
-    my $lead_symb    = '';
+    my $lead_symb = '';
     foreach (@_) {
         $is_prog                = 1  if /prog/i;
         $is_auth                = 1  if /auth/i;
@@ -52,7 +52,7 @@ sub show_front_matter {
         $lead_symb              = $_ if /^[^a-zA-Z0-9]$/;
     }
     my $newline = $is_no_newline ? "" : "\n";
-    
+
     #
     # Fill in the front matter array.
     #
@@ -63,12 +63,12 @@ sub show_front_matter {
         '+' => $lead_symb.('+' x $border_len).$newline,
         '*' => $lead_symb.('*' x $border_len).$newline,
     );
-    
+
     # Top rule
     if ($is_prog or $is_auth) {
         $fm[$k++] = $borders{'+'};
     }
-    
+
     # Program info, except the usage
     if ($is_prog) {
         $fm[$k++] = sprintf(
@@ -79,14 +79,21 @@ sub show_front_matter {
             $newline,
         );
         $fm[$k++] = sprintf(
-            "%sVersion %s (%s)%s",
+            "%s%s v%s (%s)%s",
             ($lead_symb ? $lead_symb.' ' : $lead_symb),
+            $prog_info_href->{titl},
             $prog_info_href->{vers},
             $prog_info_href->{date_last},
             $newline,
         );
+        $fm[$k++] = sprintf(
+            "%sPerl %s%s",
+            ($lead_symb ? $lead_symb.' ' : $lead_symb),
+            $^V,
+            $newline,
+        );
     }
-    
+
     # Timestamp
     if ($is_timestamp) {
         my %datetimes = construct_timestamps('-');
@@ -94,10 +101,10 @@ sub show_front_matter {
             "%sCurrent time: %s%s",
             ($lead_symb ? $lead_symb.' ' : $lead_symb),
             $datetimes{ymdhms},
-            $newline
+            $newline,
         );
     }
-    
+
     # Author info
     if ($is_auth) {
         $fm[$k++] = $lead_symb.$newline if $is_prog;
@@ -105,26 +112,31 @@ sub show_front_matter {
             "%s%s%s",
             ($lead_symb ? $lead_symb.' ' : $lead_symb),
             $prog_info_href->{auth}{$_},
-            $newline
-        ) for qw(name posi affi mail);
+            $newline,
+        ) for (
+            'name',
+#            'posi',
+#            'affi',
+            'mail',
+        );
     }
-    
+
     # Bottom rule
     if ($is_prog or $is_auth) {
         $fm[$k++] = $borders{'+'};
     }
-    
+
     # Program usage: Leading symbols are not used.
     if ($is_usage) {
         $fm[$k++] = $newline if $is_prog or $is_auth;
         $fm[$k++] = $prog_info_href->{usage};
     }
-    
+
     # Feed a blank line at the end of the front matter.
     if (not $is_no_trailing_blkline) {
         $fm[$k++] = $newline;
     }
-    
+
     #
     # Print the front matter.
     #
@@ -140,21 +152,20 @@ sub show_front_matter {
 
 sub validate_argv {
     # """Validate @ARGV against %cmd_opts."""
-    my $sub_name = join('::', (caller(0))[0, 3]);
-    
+
     my $argv_aref     = shift;
     my $cmd_opts_href = shift;
-    
+    my $sub_name = join('::', (caller(0))[0, 3]);
     croak "The 1st arg of [$sub_name] must be an array ref!"
         unless ref $argv_aref eq ARRAY;
     croak "The 2nd arg of [$sub_name] must be a hash ref!"
         unless ref $cmd_opts_href eq HASH;
-    
+
     # For yn prompts
     my $the_prog = (caller(0))[1];
     my $yn;
     my $yn_msg = "    | Want to see the usage of $the_prog? [y/n]> ";
-    
+
     #
     # Terminate the program if the number of required arguments passed
     # is not sufficient.
@@ -177,11 +188,11 @@ sub validate_argv {
             }
         }
     }
-    
+
     #
     # Count the number of correctly passed command-line options.
     #
-    
+
     # Non-fnames
     my $num_corr_cmd_opts = 0;
     foreach my $arg (@$argv_aref) {
@@ -192,12 +203,12 @@ sub validate_argv {
             }
         }
     }
-    
+
     # Fname-likes
     my $num_corr_fnames = 0;
     $num_corr_fnames = grep $_ !~ /^-/, @$argv_aref;
     $num_corr_cmd_opts += $num_corr_fnames;
-    
+
     # Warn if "no" correct command-line options have been passed.
     if (not $num_corr_cmd_opts) {
         print "\n    | None of the command-line options was correct.\n";
@@ -208,22 +219,22 @@ sub validate_argv {
             print $yn_msg;
         }
     }
-    
+
     return;
 }
 
 
 sub reduce_data {
     # """Reduce data and generate reporting files."""
-    my $sub_name = join('::', (caller(0))[0, 3]);
-    
+
     my $sets_href = shift;
     my $cols_href = shift;
+    my $sub_name = join('::', (caller(0))[0, 3]);
     croak "The 1st arg of [$sub_name] must be a hash ref!"
         unless ref $sets_href eq HASH;
     croak "The 2nd arg of [$sub_name] must be a hash ref!"
         unless ref $cols_href eq HASH;
-    
+
     #
     # Available formats
     # [1] dat
@@ -250,7 +261,7 @@ sub reduce_data {
     # > [3] and [4] are essentially their modules' interfaces.
     # > [5] and [6] are a simple chunk of their modules' data dumping commands.
     #
-    
+
     #
     # Default attributes
     #
@@ -312,7 +323,7 @@ sub reduce_data {
     # (CAUTION: Not the whole hashes!)
     $sets{$_} = $sets_href->{$_} for keys %$sets_href;
     $cols{$_} = $cols_href->{$_} for keys %$cols_href;
-    
+
     #
     # Data format validation
     #
@@ -325,7 +336,7 @@ sub reduce_data {
               "Available formats are: ".
               join(", ", sort keys %flags)."\n";
     }
-    
+
     #
     # Column size validation
     #
@@ -341,7 +352,7 @@ sub reduce_data {
                 "It must be [$cols{size}] or its integer multiple!";
         }
     }
-    
+
     #
     # Create some default key-val pairs.
     #
@@ -371,7 +382,7 @@ sub reduce_data {
     #   but are not surrounded by any space characters.
     # > XLSX, as written in binaries, has nothing to do here.
     #
-    
+
     # dat
     $cols{space_bef}{dat} = " " unless exists $cols{space_bef}{dat};
     $cols{heads_sep}{dat} = "|" unless exists $cols{heads_sep}{dat};
@@ -395,7 +406,7 @@ sub reduce_data {
 #    dump(\%cols);
 #    pause_shell();
     #+++++++++++++++++++#
-    
+
     #
     # Convert the data array into a "rowwise" columnar structure.
     #
@@ -408,15 +419,15 @@ sub reduce_data {
         #+++++++++++++++++++#
         $i++ if ($j + 1) % $cols{size} == 0;
     }
-    
+
     #
     # Define row and column indices to be used for iteration controls.
     #
     $rows{idx_last}     = $#{$cols{data_rowwise}};
     $cols{idx_multiple} = $cols{size} - 1;
-    
+
     # Obtain columnar data sums.
-    if (defined $cols{sum_idx_multiples}) {
+    if ($cols{sum_idx_multiples} and @{$cols{sum_idx_multiples}}) {
         for (my $i=0; $i<=$rows{idx_last}; $i++) {
             for (my $j=0; $j<=$cols{idx_multiple}; $j++) {
                     if (first { $j == $_ } @{$cols{sum_idx_multiples}}) {
@@ -430,19 +441,19 @@ sub reduce_data {
 #    dump(\%cols);
 #    pause_shell();
     #+++++++++++++++++++#
-    
+
     #
     # Notify the beginning of the routine.
     #
     say "\n#".('=' x 69);
     say "#"." [$sub_name] $sets{begin_msg}";
     say "#".('=' x 69);
-    
+
     #
     # Multiplex outputting
     # IO::Tee intentionally not used for avoiding its additional installation
     #
-    
+
     # Define filehandle refs and corresponding filenames.
     my($dat_fh, $tex_fh, $csv_fh, $xlsx_fh);
     my %rpt_formats = (
@@ -453,7 +464,7 @@ sub reduce_data {
         json => {fh => $xlsx_fh, fname => $sets{rpt_bname}.".json"},
         yaml => {fh => $xlsx_fh, fname => $sets{rpt_bname}.".yaml"},
     );
-    
+
     # Multiple invocations of the writing routine
     my $cwd = getcwd();
     mkdir $sets{rpt_path} if not -e $sets{rpt_path};
@@ -469,10 +480,15 @@ sub reduce_data {
             \%cols,
             \%rows,
         );
-        say "[$sets{rpt_path}/$rpt_formats{$_}{fname}] generated.";
+        printf(
+            "[%s%s%s] generated.\n",
+            $sets{rpt_path},
+            ($sets{rpt_path} =~ /\/$/ ? '' : '/'),
+            $rpt_formats{$_}{fname},
+        );
     }
     chdir $cwd;
-    
+
     #
     # The writing routine (nested)
     #
@@ -484,21 +500,21 @@ sub reduce_data {
         my %_strs  = %{$_[4]};
         my %_cols  = %{$_[5]};
         my %_rows  = %{$_[6]};
-        
+
         #
         # [CSV][XLSX] Load modules and instantiate classes.
         #
-        
+
         # [CSV]
         my $csv;
         if ($_flag =~ $_flags{csv}) {
             require Text::CSV; # vendor lib || cpanm
             $csv = Text::CSV->new( { binary => 1 } )
                 or die "Cannot instantiate Text::CSV! ".Text::CSV->error_diag();
-            
+
             $csv->eol($_strs{newlines}{$_flag});
         }
-        
+
         # [XLSX]
         my($workbook, $worksheet, %xlsx_formats);
         my($xlsx_row, $xlsx_col, $xlsx_col_init, $xlsx_col_scale_factor);
@@ -509,7 +525,7 @@ sub reduce_data {
             require Excel::Writer::XLSX; # vendor lib || cpanm
             binmode($_fh); # fh can now be R/W in binary as well as in text
             $workbook = Excel::Writer::XLSX->new($_fh);
-            
+
             # Define the worksheet name using the bare filename of the report.
             # If the bare filename contains a character that is invalid
             # as an Excel worksheet name or lengthier than 32 characters,
@@ -520,7 +536,7 @@ sub reduce_data {
                 )
             };
             $worksheet = $workbook->add_worksheet() if $@;
-            
+
             # As of Excel::Writer::XLSX v0.98, a format property
             # can be added in the middle, but cannot be overridden.
             # The author of this routine therefore uses cellwise formats
@@ -540,7 +556,7 @@ sub reduce_data {
 #            dump(\%xlsx_formats);
 #            pause_shell();
             #+++++++++++++++++++#
-            
+
             # Panes freezing
             # Added on 2018-11-23
             if ($_cols{freeze_panes}) {
@@ -551,11 +567,11 @@ sub reduce_data {
                 );
             }
         }
-        
+
         #
         # Data construction
         #
-        
+
         # [DAT] Prepend comment symbols to the first headings.
         if ($_flag =~ $_flags{dat}) {
             $_cols{heads}[0]    = $_strs{symbs}{$_flag}." ".$_cols{heads}[0];
@@ -565,14 +581,14 @@ sub reduce_data {
             $_cols{heads}[0]    =~ s/^[^\w] //;
             $_cols{subheads}[0] =~ s/^[^\w] //;
         }
-        
+
         #
         # Define widths for columnar alignment.
         # (1) Take the lengthier one between headings and subheadings.
         # (2) Take the lengthier one between (1) and the data.
         # (3) Take the lengthier one between (2) and the data sum.
         #
-        
+
         # (1)
         for (my $j=0; $j<=$#{$_cols{heads}}; $j++) {
             $_cols{widths}[$j] =
@@ -590,14 +606,14 @@ sub reduce_data {
             }
         }
         # (3)
-        if (defined $_cols{sum_idx_multiples}) {
+        if ($_cols{sum_idx_multiples} and @{$_cols{sum_idx_multiples}}) {
             foreach my $j (@{$_cols{sum_idx_multiples}}) {
                 $_cols{widths}[$j] =
                     length($_cols{data_sums}[$j]) > $_cols{widths}[$j] ?
                     length($_cols{data_sums}[$j]) : $_cols{widths}[$j];
             }
         }
-        
+
         #
         # [DAT] Border construction
         #
@@ -610,7 +626,10 @@ sub reduce_data {
                     $_cols{widths}[$j] + length($_cols{heads_sep}{$_flag})
                 );
                 # Border width 2: Data sums label
-                if (defined $_cols{sum_idx_multiples}) {
+                if (
+                    $_cols{sum_idx_multiples}
+                    and @{$_cols{sum_idx_multiples}}
+                ) {
                     if ($j < $_cols{sum_idx_multiples}[0]) {
                         $_cols{border_widths}[1] += (
                                      $_cols{widths}[$j]
@@ -634,33 +653,33 @@ sub reduce_data {
             $_strs{rules}{$_flag}{bot} =
                 $_strs{symbs}{$_flag}.('-' x $_cols{border_widths}[0]);
         }
-        
+
         #
         # Begin writing.
         # [JSON][YAML]: Via their dumping commands.
         # [DAT][TeX]:   Via the output filehandle.
         # [CSV][XLSX]:  Via their output methods.
         #
-        
+
         # [JSON][YAML][DAT][TeX] Change the output filehandle from STDOUT.
         select($_fh);
-        
+
         #
         # [JSON][YAML] Load modules and dump the data.
         #
-        
+
         # [JSON]
         if ($_flag =~ $_flags{json}) {
             use JSON; # vendor lib || cpanm
             print to_json(\%_cols, { pretty => 1 });
         }
-        
+
         # [YAML]
         if ($_flag =~ $_flags{yaml}) {
             use YAML; # vendor lib || cpanm
             print Dump(\%_cols);
         }
-        
+
         # [DAT][TeX] OPTIONAL blocks
         if ($_flag =~ /$_flags{dat}|$_flags{tex}/) {
             # Prepend the program information, if given.
@@ -673,7 +692,7 @@ sub reduce_data {
                     ($_strs{symbs}{$_flag} // $_strs{symbs}{dat}),
                 );
             }
-            
+
             # Prepend comments, if given.
             if ($_sets{cmt_arr}) {
                 if (@{$_sets{cmt_arr}}) {
@@ -682,12 +701,12 @@ sub reduce_data {
                 }
             }
         }
-        
+
         # [TeX] Wrapping up - begin
         if ($_flag =~ $_flags{tex}) {
             # Document class
             say "\\documentclass{article}";
-            
+
             # Package loading with kind notice
             say "%";
             say "% (1) The \...rule commands are defined by".
@@ -696,12 +715,12 @@ sub reduce_data {
             say "%     you may want to use the underscore package.";
             say "%";
             say "\\usepackage{booktabs,underscore}";
-            
+
             # document env - begin
             print "\n";
             say "\\begin{document}";
             print "\n";
-            
+
             # tabular env - begin
             print "\\begin{tabular}{";
             for (my $j=0; $j<=$#{$_cols{heads}}; $j++) {
@@ -712,15 +731,15 @@ sub reduce_data {
             }
             print "}\n";
         }
-        
+
         # [DAT][TeX] Top rule
         print $_strs{indents}{$_flag}, $_strs{rules}{$_flag}{top}, "\n"
             if $_flag =~ /$_flags{dat}|$_flags{tex}/;
-        
+
         #
         # Headings and subheadings
         #
-        
+
         # [DAT][TeX]
         for (my $j=0; $j<=$#{$_cols{heads}}; $j++) {
             if ($_flag =~ /$_flags{dat}|$_flags{tex}/) {
@@ -766,7 +785,7 @@ sub reduce_data {
                 print $_strs{newlines}{$_flag} if $j == $#{$_cols{subheads}};
             }
         }
-        
+
         # [CSV][XLSX]
         if ($_flag =~ $_flags{csv}) {
             $csv->sep_char($_cols{heads_sep}{$_flag});
@@ -787,11 +806,11 @@ sub reduce_data {
                 $xlsx_formats{none}{none}
             );
         }
-        
+
         # [DAT][TeX] Middle rule
         print $_strs{indents}{$_flag}, $_strs{rules}{$_flag}{mid}, "\n"
             if $_flag =~ /$_flags{dat}|$_flags{tex}/;
-        
+
         #
         # Data
         #
@@ -845,11 +864,11 @@ sub reduce_data {
                     $_cols{conv} =
                         '%-'.
                         (
-                                     $_cols{widths}[$j] 
+                                     $_cols{widths}[$j]
                             + length($_cols{space_bef}{$_flag})
                         ).
                         's';
-                    
+
                     # Conversion (ii): "Ragged left"
                     # > length($_cols{space_bef}{$_flag})
                     #   is "appended" to the conversion.
@@ -864,7 +883,7 @@ sub reduce_data {
                                     '' : ' ' x length($_cols{space_bef}{$_flag})
                             );
                     }
-                    
+
                     # Columns
                     print $_strs{indents}{$_flag} if $j == 0;
                     if ($_cols{data_sep}{$_flag} !~ /\t/) {
@@ -899,7 +918,7 @@ sub reduce_data {
                         $xlsx_col,
                         $_cols{widths}[$j] * $xlsx_col_scale_factor
                     );
-                    
+
                     my $_align = (
                         first { $j == $_ } @{$_cols{ragged_left_idx_multiples}}
                     ) ? 'right' : 'left';
@@ -920,15 +939,15 @@ sub reduce_data {
                 }
             }
         }
-        
+
         # [DAT][TeX] Bottom rule
         print $_strs{indents}{$_flag}, $_strs{rules}{$_flag}{bot}, "\n"
             if $_flag =~ /$_flags{dat}|$_flags{tex}/;
-        
+
         #
         # Append the data sums.
         #
-        if (defined $_cols{sum_idx_multiples}) {
+        if ($_cols{sum_idx_multiples} and @{$_cols{sum_idx_multiples}}) {
             #
             # [DAT] Columns "up to" the beginning of the data sums
             #
@@ -943,11 +962,11 @@ sub reduce_data {
                 );
                 print $sum_lab_aligned;
             }
-            
+
             #
             # Columns "for" the data sums
             #
-            
+
             # [DAT][TeX][XLSX]
             my $the_beginning = $_flag !~ $_flags{dat} ?
                 0 : $_cols{sum_idx_multiples}[0];
@@ -963,11 +982,11 @@ sub reduce_data {
                     $_cols{conv} =
                         '%-'.
                         (
-                                     $_cols{widths}[$j] 
+                                     $_cols{widths}[$j]
                             + length($_cols{space_bef}{$_flag})
                         ).
                         's';
-                    
+
                     # Conversion (ii): "Ragged left"
                     # > length($_cols{space_bef}{$_flag})
                     #   is "appended" to the conversion.
@@ -982,7 +1001,7 @@ sub reduce_data {
                                     '' : ' ' x length($_cols{space_bef}{$_flag})
                             );
                     }
-                    
+
                     # Columns
                     print $_strs{indents}{$_flag} if $j == 0;
                     if ($_cols{data_sep}{$_flag} !~ /\t/) {
@@ -1014,19 +1033,19 @@ sub reduce_data {
                     my $_align = (
                         first { $j == $_ } @{$_cols{ragged_left_idx_multiples}}
                     ) ? 'right' : 'left';
-                    
+
                     $worksheet->write(
                         $xlsx_row,
                         $xlsx_col,
                         $_cols{data_sums}[$j] // $_strs{nan}{$_flag},
                         $xlsx_formats{none}{$_align}
                     );
-                    
+
                     $xlsx_col++;
                     $xlsx_row++ if $j == $_cols{sum_idx_multiples}[-1];
                 }
             }
-            
+
             # [CSV]
             if ($_flag =~ $_flags{csv}) {
                 $csv->print(
@@ -1035,38 +1054,38 @@ sub reduce_data {
                 );
             }
         }
-        
+
         # [TeX] Wrapping up - end
         if ($_flag =~ $_flags{tex}) {
             # tabular env - end
             say '\\end{tabular}';
-            
+
             # document env - end
             print "\n";
             say "\\end{document}";
         }
-        
+
         # [DAT][TeX] EOF
         print $_strs{eofs}{$_flag} if $_flag =~ /$_flags{dat}|$_flags{tex}/;
-        
+
         # [JSON][YAML][DAT][TeX] Restore the output filehandle to STDOUT.
         select(STDOUT);
-        
+
         # Close the filehandle.
         # the XLSX filehandle must be closed via its close method!
         close $_fh         if $_flag !~ $_flags{xlsx};
         $workbook->close() if $_flag =~ $_flags{xlsx};
     }
-    
+
     return;
 }
 
 
 sub show_elapsed_real_time {
     # """Show the elapsed real time."""
-    
+
     my @opts = @_ if @_;
-    
+
     # Parse optional arguments.
     my $is_return_copy = 0;
     my @del; # Garbage can
@@ -1080,13 +1099,13 @@ sub show_elapsed_real_time {
     }
     my %dels = map { $_ => 1 } @del;
     @opts = grep !$dels{$_}, @opts;
-    
+
     # Optional strings printing
     print for @opts;
-    
+
     # Elapsed real time printing
     my $elapsed_real_time = sprintf("Elapsed real time: [%s s]", time - $^T);
-    
+
     # Return values
     if ($is_return_copy) {
         return $elapsed_real_time;
@@ -1100,22 +1119,22 @@ sub show_elapsed_real_time {
 
 sub pause_shell {
     # """Pause the shell."""
-    
+
     my $notif = $_[0] ? $_[0] : "Press enter to exit...";
-    
+
     print $notif;
     while (<STDIN>) { last; }
-    
+
     return;
 }
 
 
 sub construct_timestamps {
     # """Construct timestamps."""
-    
+
     # Optional setting for the date component separator
     my $date_sep  = '';
-    
+
     # Terminate the program if the argument passed
     # is not allowed to be a delimiter.
     my @delims = ('-', '_');
@@ -1125,13 +1144,13 @@ sub construct_timestamps {
         croak "The date delimiter must be one of: [".join(', ', @delims)."]"
             unless $is_correct_delim;
     }
-    
+
     # Construct and return a datetime hash.
     my $dt  = DateTime->now(time_zone => 'local');
     my $ymd = $dt->ymd($date_sep);
     my $hms = $dt->hms($date_sep ? ':' : '');
     (my $hm = $hms) =~ s/[0-9]{2}$//;
-    
+
     my %datetimes = (
         none   => '', # Used for timestamp suppressing
         ymd    => $ymd,
@@ -1140,7 +1159,7 @@ sub construct_timestamps {
         ymdhms => sprintf("%s%s%s", $ymd, ($date_sep ? ' ' : '_'), $hms),
         ymdhm  => sprintf("%s%s%s", $ymd, ($date_sep ? ' ' : '_'), $hm),
     );
-    
+
     return %datetimes;
 }
 
@@ -1148,20 +1167,19 @@ sub construct_timestamps {
 sub construct_range {
     # """Construct a range for both a list of decimals
     # and a list of integers."""
-    my $sub_name = join('::', (caller(0))[0, 3]);
-    
+
     my $range_aref = shift;
     my $line_sref  = shift;
-    
+    my $sub_name = join('::', (caller(0))[0, 3]);
     croak "The 1st arg of [$sub_name] must be an array ref!"
         unless ref $range_aref eq ARRAY;
-    
+
     my $line;
     if ($line_sref and $$line_sref) {
         croak "The 2nd arg of [$sub_name] must be a scalar ref!"
             unless ref $line_sref eq SCALAR;
     }
-    
+
     #
     # Terminate the program if more than one decimal point
     # has been passed for a single number.
@@ -1172,13 +1190,13 @@ sub construct_range {
             croak "More than one decimal point! Terminating";
         }
     }
-    
+
     #
     # Check if the given list of numbers contains a decimal.
     # This affects many of the following statements.
     #
     my @num_of_decimals = grep /[.]/, @$range_aref;
-    
+
     #
     # Pad "integer" 0 to the omitted for correct range construction.
     #
@@ -1187,14 +1205,14 @@ sub construct_range {
             s/(^[.][0-9]+)/0$1/ if /^[.][0-9]+/;
         }
     }
-    
+
     #
     # Populate min, max, (and optionally) incre.
     # (Dependent on whether a decimal is involved)
     #
     my $range_num_input = @$range_aref;
     my($min, $incre, $max);
-    
+
     if ($range_num_input == 3) {
         ($min, $incre, $max) = @$range_aref;
         #
@@ -1204,7 +1222,7 @@ sub construct_range {
             print $$line_sref ? "=> [$$line_sref]" : "";
             croak "The max entry must be \"nonzero\"! Terminating";
         }
-        
+
         # Hooks to jump to the next conditional: For empty and zero $incre
         $incre = -1 if (
             not $incre               # For empty and 0
@@ -1217,7 +1235,7 @@ sub construct_range {
     }
     if ($range_num_input == 2 or $incre == -1) {
         ($min, $max) = @$range_aref[0, -1]; # Slicing for empty $incre
-        
+
         # Define the increment.
         # (i)  For decimals, the longest decimal places are used.
         #      e.g. 0.1,  0.20 --> Increment: 0.01
@@ -1227,7 +1245,7 @@ sub construct_range {
         if (@num_of_decimals) {
             my $power_of_ten;
             my $power_of_ten_largest = 0;
-            
+
             foreach (@$range_aref) {
                 $power_of_ten = index((reverse $_), '.');
                 $power_of_ten_largest = $power_of_ten > $power_of_ten_largest ?
@@ -1243,7 +1261,7 @@ sub construct_range {
         print $$line_sref ? "=> [$$line_sref]" : "";
         croak "We need 2 or 3 numbers to construct a range! Terminating";
     }
-    
+
     #
     # Terminate the program if the number passed as the min
     # is bigger than the number passed as the max.
@@ -1252,7 +1270,7 @@ sub construct_range {
         print $$line_sref ? "=> [$$line_sref]" : "";
         croak "$min is bigger than $max! Terminating";
     }
-    
+
     #
     # Find the lengthiest number to construct a convert.
     # (Dependent on whether a decimal is involved)
@@ -1261,17 +1279,17 @@ sub construct_range {
     foreach (@$range_aref) {
         # If a decimal is contained, compare only the decimal places.
         s/[0-9]+[.]([0-9]+)/$1/ if @num_of_decimals;
-        
+
         $lengthiest = $_ if length($_) > length($lengthiest);
     }
-    
+
     #
     # Construct a zero-padded convert (in case the ranged numbers
     # are used as part of filenames).
     #
     my $conv = @num_of_decimals ? '%.'.length($lengthiest).'f' :
                                   '%0'.length($lengthiest).'d';
-    
+
     #
     # Construct a range.
     #
@@ -1292,7 +1310,7 @@ sub construct_range {
             $_ = int $_;
         }
     }
-    
+
     @$range_aref = (); # Empty the range array ref before its refilling.
     for (my $i=$min; $i<=$max; $i+=$incre) {
         push @$range_aref, sprintf(
@@ -1304,7 +1322,7 @@ sub construct_range {
             )
         );
     }
-    
+
     return;
 }
 #-------------------------------------------------------------------------------
@@ -1314,18 +1332,18 @@ sub construct_range {
 sub calc_consti_elem_wgt_avg_molar_masses {
     # """Calculate the weighted-average molar masses of
     # the constituent elements of a material."""
-    
+
     my(                  # e.g.
         $mat_href,       # \%moo3
         $weighting_frac, # 'amt_frac'
         $is_verbose      # 1 (boolean)
     ) = @_;
-    
+
     # e.g. ('mo', 'o')
     foreach my $elem_str (@{$mat_href->{consti_elems}}) {
         # Redirect the hash of the constituent element for clearer coding.
         my $elem_href = $mat_href->{$elem_str}{href}; # e.g. \%mo, \%o
-        
+
         if ($is_verbose) {
             say "\n".("=" x 70);
             printf(
@@ -1338,12 +1356,12 @@ sub calc_consti_elem_wgt_avg_molar_masses {
             );
             say "=" x 70;
         }
-        
+
         #
         # Calculate the weighted-average molar mass of a constituent element
         # by adding up the "weighted" molar masses of its isotopes.
         #
-        
+
         # Initializations
         #        $mo{wgt_avg_molar_mass}
         #         $o{wgt_avg_molar_mass}
@@ -1351,7 +1369,7 @@ sub calc_consti_elem_wgt_avg_molar_masses {
         #        $mo{mass_frac_sum}
         #         $o{mass_frac_sum}
         $elem_href->{mass_frac_sum} = 0; # Used for (ii) below
-        
+
         # (i) Weight by amount fraction: Weighted "arithmetic" mean
         if ($weighting_frac eq 'amt_frac') {
             # e.g. ('92', '94', ... '100') for $elem_href == \%mo
@@ -1364,7 +1382,7 @@ sub calc_consti_elem_wgt_avg_molar_masses {
                     $elem_href->{$mass_num}{$weighting_frac}
                     #                $mo{100}{molar_mass}
                     * $elem_href->{$mass_num}{molar_mass};
-                
+
                 # (2) Cumulative sum of the weighted molar masses of
                 #     the isotopes, which will in turn become the
                 #     weighted-average molar mass of the constituent element.
@@ -1372,11 +1390,11 @@ sub calc_consti_elem_wgt_avg_molar_masses {
                 $elem_href->{wgt_avg_molar_mass} +=
                     #              $mo{100}{wgt_molar_mass}
                     $elem_href->{$mass_num}{wgt_molar_mass};
-                
+
                 # No further step :)
             }
         }
-        
+
         # (ii) Weight by mass fraction: Weighted "harmonic" mean
         elsif ($weighting_frac eq 'mass_frac') {
             foreach my $mass_num (@{$elem_href->{mass_nums}}) {
@@ -1385,13 +1403,13 @@ sub calc_consti_elem_wgt_avg_molar_masses {
                 $elem_href->{$mass_num}{wgt_molar_mass} =
                     $elem_href->{$mass_num}{$weighting_frac}
                     / $elem_href->{$mass_num}{molar_mass};
-                
+
                 # (2) Cumulative sum of the weighted molar masses of
                 #     the isotopes
                 #     => Will be the denominator in (4).
                 $elem_href->{wgt_avg_molar_mass} +=
                     $elem_href->{$mass_num}{wgt_molar_mass};
-                
+
                 # (3) Cumulative sum of the mass fractions of the isotopes
                 #     => Will be the numerator in (4).
                 #     => The final value of the cumulative sum
@@ -1404,18 +1422,18 @@ sub calc_consti_elem_wgt_avg_molar_masses {
                 $elem_href->{mass_frac_sum} # Should be 1 in principle.
                 / $elem_href->{wgt_avg_molar_mass};
         }
-        
+
         else {
             croak "\n\n[$weighting_frac] ".
                   "is not an available weighting factor; terminating.\n";
         }
-        
+
         if ($is_verbose) {
             dump($elem_href);
             pause_shell("Press enter to continue...");
         }
     }
-    
+
     return;
 }
 
@@ -1423,18 +1441,18 @@ sub calc_consti_elem_wgt_avg_molar_masses {
 sub convert_fracs {
     # """Convert the amount fractions of nuclides to mass fractions,
     # or vice versa."""
-    
+
     my(              # e.g.
         $mat_href,   # \%moo3
         $conv_mode,  # 'amt_to_mass'
         $is_verbose, # 1 (boolean)
     ) = @_;
-    
+
     # e.g. ['mo', 'o']
     foreach my $elem_str (@{$mat_href->{consti_elems}}) {
         # Redirect the hash of the constituent element for clearer coding.
         my $elem_href = $mat_href->{$elem_str}{href}; # e.g. \%mo, \%o
-        
+
         if ($is_verbose) {
             say "\n".("=" x 70);
             printf(
@@ -1446,7 +1464,7 @@ sub convert_fracs {
             );
             say "=" x 70;
         }
-        
+
         # (i) Amount to mass fractions
         if ($conv_mode eq 'amt_to_mass') {
             foreach my $mass_num (@{$elem_href->{mass_nums}}) {
@@ -1456,7 +1474,7 @@ sub convert_fracs {
                     / $elem_href->{wgt_avg_molar_mass};
             }
         }
-        
+
         # (ii) Mass to amount fractions
         elsif ($conv_mode eq 'mass_to_amt') {
             foreach my $mass_num (@{$elem_href->{mass_nums}}) {
@@ -1466,13 +1484,13 @@ sub convert_fracs {
                     / $elem_href->{$mass_num}{molar_mass};
             }
         }
-        
+
         if ($is_verbose) {
             dump($elem_href);
             pause_shell("Press enter to continue...");
         }
     }
-    
+
     return;
 }
 
@@ -1480,7 +1498,7 @@ sub convert_fracs {
 sub enrich_or_deplete {
     # """Redistribute the enrichment levels of nuclides with respect to
     # the enrichment level of the nuclide to be enriched/depleted."""
-    
+
     my(                       # e.g.
         $enri_nucl_elem_href, # \%mo
         $enri_nucl_mass_num,  # '100'
@@ -1500,7 +1518,7 @@ sub enrich_or_deplete {
         $enri_lev
         - $enri_nucl_elem_href->{$enri_nucl_mass_num}{$enri_lev_type};
     my $old_enri_lev; # Printing purposes only
-    
+
     #
     # - If the goal enrichment level of the nuclide of interest is
     #   lower than its minimum depletion level, exit and return '1'
@@ -1522,7 +1540,7 @@ sub enrich_or_deplete {
         );
         return 1; # Which will in turn become an exit hook for enri()
     }
-    
+
     #
     # Show the nuclide of interest and its planned enrichment level change.
     #
@@ -1553,7 +1571,7 @@ sub enrich_or_deplete {
         );
         say "=" x 70;
     }
-    
+
     #
     # Collect enrichment levels from the nuclides other than the nuclide
     # of interest. The collected (donated) enrichment levels will then be
@@ -1568,30 +1586,30 @@ sub enrich_or_deplete {
     #   even if that to-be-donated enrichment levels have already been
     #   subtracted from the previously iterated nuclides.
     #
-    
+
     # Take out the nuclide of interest (to be enriched or depleted) from
     # the nuclides list. The nuclide of interest will be handled separately
     # after the loop run.
     my @mass_nums_wo_enri_nucl =
         grep !/$enri_nucl_mass_num/, @{$enri_nucl_elem_href->{mass_nums}};
-    
+
     # Determine the order of nuclide depletion.
-    if ($depl_order =~ /asc(end)?/i) {
+    if ($depl_order =~ /asc(?:end)?/i) {
         @mass_nums_wo_enri_nucl = sort { $a <=> $b } @mass_nums_wo_enri_nucl;
     }
-    elsif ($depl_order =~ /desc(end)?/i) {
+    elsif ($depl_order =~ /desc(?:end)?/i) {
         @mass_nums_wo_enri_nucl = sort { $b <=> $a } @mass_nums_wo_enri_nucl;
     }
-    elsif ($depl_order =~ /rand(om)?|shuffle/i) {
+    elsif ($depl_order =~ /rand(?:om)?|shuffle/i) {
         @mass_nums_wo_enri_nucl = shuffle @mass_nums_wo_enri_nucl;
     }
-    
+
     foreach my $mass_num (@mass_nums_wo_enri_nucl) {
         # (b-d) of the arithmetics below
         $donatable =
             $enri_nucl_elem_href->{$mass_num}{$enri_lev_type}
             - $enri_nucl_elem_href->{$mass_num}{min_depl_lev};
-        
+
         # Show the current nuclide.
         if ($is_verbose) {
             say "-" x 70;
@@ -1617,7 +1635,7 @@ sub enrich_or_deplete {
             );
             say "-" x 70;
         }
-        
+
         #
         # Arithmetics for the nuclides other than the nuclide of interest
         # (whose enrichment levels are to be extracted)
@@ -1649,11 +1667,11 @@ sub enrich_or_deplete {
         #   - $enri_nucl_elem_href->{$mass_num}{min_depl_lev}
         #   - The minimum depletion level
         #
-        
+
         # Remember the enrichment level of a nuclide
         # before its redistribution, for printing purposes.
         $old_enri_lev = $enri_nucl_elem_href->{$mass_num}{$enri_lev_type};
-        
+
         # (i) b -= a ... (a < 0) where (b > d) is boolean true
         if ($to_be_absorbed < 0) {
             # Reporting (1/2)
@@ -1664,14 +1682,14 @@ sub enrich_or_deplete {
                     $to_be_absorbed,
                 );
             }
-            
+
             # b -= a
             $enri_nucl_elem_href->{$mass_num}{$enri_lev_type} -=
                 $to_be_absorbed;
-            
+
             # a = 0
             $to_be_absorbed = 0;
-            
+
             # Reporting (2/2)
             if ($is_verbose) {
                 printf(
@@ -1692,18 +1710,18 @@ sub enrich_or_deplete {
                 );
                 print "\n";
             }
-            
+
             # next must be used not to enter into the conditionals below.
             next;
         }
-        
+
         # (ii) skip ... (b = d)
         # b = d means that no more enrichment level is available.
         if (not $donatable) {
             print "No more donatable [$enri_lev_type].\n\n" if $is_verbose;
             next;
         }
-        
+
         # (iii) c = a-(b-d) ... (b > d "and" a >= b-d)
         if (
             $to_be_absorbed >= $donatable
@@ -1720,17 +1738,17 @@ sub enrich_or_deplete {
                     $to_be_absorbed,
                 );
             }
-            
+
             # c = a-(b-d)
             $remainder = $to_be_absorbed - $donatable;
-            
+
             # b = d
             $enri_nucl_elem_href->{$mass_num}{$enri_lev_type} =
                 $enri_nucl_elem_href->{$mass_num}{min_depl_lev};
-            
+
             # a = c
             $to_be_absorbed = $remainder;
-            
+
             # Reporting (2/2)
             if ($is_verbose) {
                 printf(
@@ -1752,7 +1770,7 @@ sub enrich_or_deplete {
                 print "\n";
             }
         }
-        
+
         # (iv) c = (b-d)-a ... (b > d "and" b-d > a "and" a != 0)
         elsif (
             $donatable > $to_be_absorbed
@@ -1778,14 +1796,14 @@ sub enrich_or_deplete {
             $remainder =
                 $enri_nucl_elem_href->{$mass_num}{$enri_lev_type}
                 - $to_be_absorbed;
-            
+
             # b = c
             $enri_nucl_elem_href->{$mass_num}{$enri_lev_type} = $remainder;
-            
+
             # a = 0, meaning that no enrichment level
             # is left to be transferred.
             $to_be_absorbed = 0;
-            
+
             # Reporting
             if ($is_verbose) {
                 printf(
@@ -1803,9 +1821,9 @@ sub enrich_or_deplete {
             }
         }
     }
-    
+
     #
-    # Provide the nuclide of interest with the actual total donated 
+    # Provide the nuclide of interest with the actual total donated
     # enrichment level, which is ($to_be_absorbed_goal - $to_be_absorbed
     # remaining after the loop run). For example:
     # > $to_be_absorbed_goal = 0.9021
@@ -1834,7 +1852,7 @@ sub enrich_or_deplete {
             $enri_nucl_elem_href->{$enri_nucl_mass_num}{min_depl_lev},
         );
         say "-" x 70;
-        
+
         # Goal change of the enrichment level of the nuclide of interest
         printf(
             "%s: [%f] --> [%f]\n",
@@ -1843,15 +1861,15 @@ sub enrich_or_deplete {
             $enri_lev,
         );
     }
-    
+
     # The actual total donated enrichment level
     $to_be_absorbed_goal -= $to_be_absorbed;
-    
+
     # Assign the actual total donated enrichment level
     # to the nuclide of interest.
     $enri_nucl_elem_href->{$enri_nucl_mass_num}{$enri_lev_type} +=
         $to_be_absorbed_goal;
-    
+
     if ($is_verbose) {
         # Actual change of the enrichment level of the nuclide of interest
         printf(
@@ -1860,7 +1878,7 @@ sub enrich_or_deplete {
             $old_enri_lev,
             $enri_nucl_elem_href->{$enri_nucl_mass_num}{$enri_lev_type},
         );
-        
+
         # Notice if $to_be_absorbed is nonzero.
         if ($to_be_absorbed) {
             printf(
@@ -1880,7 +1898,7 @@ sub enrich_or_deplete {
             print "\n";
         }
     }
-    
+
     pause_shell("Press enter to continue...") if $is_verbose;
     return;
 }
@@ -1890,7 +1908,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
     # """Calculate the molar mass of a material,
     # mass fractions and masses of its constituent elements,
     # masses of the isotopes, and density change coefficients."""
-    
+
     my(                 # e.g.
         $mat_href,      # %\moo3
         $enri_lev_type, # 'amt_frac'
@@ -1898,7 +1916,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
         $run_mode,      # 'dcc_preproc'
     ) = @_;
     state $memorized = {}; # Memorize 'mass_frac_bef' for DCC calculation
-    
+
     if ($is_verbose) {
         say "\n".("=" x 70);
         printf(
@@ -1913,7 +1931,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
         );
         say "=" x 70;
     }
-    
+
     #
     # (1) Calculate the molar mass of the material,
     #     which depends on
@@ -1924,10 +1942,10 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
     #   - the weighted-average molar masses of the constituent elements,
     #     which are functions of their isotopic compositions, and
     #
-    
+
     # Initialization
     $mat_href->{molar_mass} = 0;
-    
+
     # $moo3{consti_elems} == ['mo', 'o']
     foreach my $elem_str (@{$mat_href->{consti_elems}}) {
         #     $moo3{molar_mass}
@@ -1939,12 +1957,12 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             #                           $o{wgt_avg_molar_mass}
             * $mat_href->{$elem_str}{href}{wgt_avg_molar_mass};
     }
-    
+
     #
     # (2) Using the molar mass of the material obtained in (1), calculate
     #     the mass fraction and the mass of the constituent elements.
     #
-    
+
     # $moo3{consti_elems} = ['mo', 'o']
     foreach my $elem_str (@{$mat_href->{consti_elems}}) {
         # (i) Mass fraction
@@ -1969,16 +1987,16 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             #       $moo3{mass}
             * $mat_href->{mass};
     }
-    
+
     # $moo3{consti_elems} = ['mo', 'o']
     foreach my $elem_str (@{$mat_href->{consti_elems}}) {
-        #
-        # (3) Associate the fraction quantities of the isotopes
-        #     to the material hash.
-        #
-        
         # $mo{mass_nums} = ['92', '94', '95', '96', '97', '98', '100']
         foreach my $mass_num (@{$mat_href->{$elem_str}{href}{mass_nums}}) {
+            #
+            # (3) Associate the fraction quantities of the isotopes
+            #     to the materials hash.
+            #
+
             #                    $moo3{mo92}{amt_frac}
             $mat_href->{$elem_str.$mass_num}{amt_frac} = # Autovivified
                 #                               $mo{92}{amt_frac}
@@ -1987,13 +2005,22 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             $mat_href->{$elem_str.$mass_num}{mass_frac} = # Autovivified
                 #                               $mo{92}{mass_frac}
                 $mat_href->{$elem_str}{href}{$mass_num}{mass_frac};
-            
+
+            #
+            # (4) Calculate and associate the masses of the isotopes.
+            #
+            $mat_href->{$elem_str.$mass_num}{mass} = # Autovivified
+                #                    $moo3{mo92}{mass_frac}
+                $mat_href->{$elem_str.$mass_num}{mass_frac}
+                #              $moo3{mo}{mass}
+                * $mat_href->{$elem_str}{mass};
+
             #***************************************************************
             #
-            # (4) Calculate DCCs of the isotopes.
+            # (5) Calculate DCCs of the isotopes.
             #
             #***************************************************************
-            
+
             # (a) If this routine was called as DCC preprocessing,
             #     create and memorize the 1st variable of an DCC.
             if ($run_mode and $run_mode =~ /dcc_preproc/i) {
@@ -2008,7 +2035,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
                 $memorized->{$mat_href->{label}}{molar_mass_bef} =
                     #     $moo3{molar_mass}
                     $mat_href->{molar_mass};
-                
+
                 # (a-2) DCC in terms of mass fractions
                 # $memorized{moo3}{mo92}{mass_frac_bef}
                 $memorized->{$mat_href->{label}}
@@ -2021,7 +2048,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
                     #            $moo3{mo}{mass_frac}
                     $mat_href->{$elem_str}{mass_frac};
             }
-            
+
             # (b) Assign the memorized 1st variable of the DCC.
             # (b-1) DCC in terms of amount fractions
             $mat_href->{$elem_str.$mass_num}{amt_frac_bef} =
@@ -2031,7 +2058,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             $mat_href->{molar_mass_bef} =
                 $memorized->{$mat_href->{label}}
                             {molar_mass_bef};
-            
+
             # (b-2) DCC in terms of mass fractions
             $mat_href->{$elem_str.$mass_num}{mass_frac_bef} =
                 $memorized->{$mat_href->{label}}
@@ -2040,7 +2067,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             $mat_href->{$elem_str}{mass_frac_bef} =
                 $memorized->{$mat_href->{label}}
                             {$elem_str}{mass_frac_bef};
-            
+
             # (c) Assign the 2nd variable of the DCC.
             # (c-1) DCC in terms of amount fractions
             #                    $moo3{mo92}{amt_frac_aft}
@@ -2051,7 +2078,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             $mat_href->{molar_mass_aft} =
                 #     $moo3{molar_mass}
                 $mat_href->{molar_mass};
-            
+
             # (c-2) DCC in terms of mass fractions
             #                    $moo3{mo92}{mass_frac_aft}
             $mat_href->{$elem_str.$mass_num}{mass_frac_aft} =
@@ -2061,7 +2088,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             $mat_href->{$elem_str}{mass_frac_aft} =
                 #            $moo3{mo}{mass_frac}
                 $mat_href->{$elem_str}{mass_frac};
-            
+
             # (d) Calculate the DCC using (b) and (c) above.
             # (d-i) DCC in terms of amount fractions
             $mat_href->{$elem_str.$mass_num}{dcc} = (
@@ -2071,7 +2098,7 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
                 $mat_href->{molar_mass_bef}
                 / $mat_href->{molar_mass_aft}
             ) if $enri_lev_type eq 'amt_frac';
-            
+
             # (d-ii) DCC in terms of mass fractions
             $mat_href->{$elem_str.$mass_num}{dcc} = (
                 $mat_href->{$elem_str.$mass_num}{mass_frac_aft}
@@ -2082,12 +2109,12 @@ sub calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs {
             ) if $enri_lev_type eq 'mass_frac';
         }
     }
-    
+
     if ($is_verbose) {
         dump($mat_href);
         pause_shell("Press enter to continue...");
     }
-    
+
     return;
 }
 
@@ -2096,14 +2123,14 @@ sub calc_mass_dens_and_num_dens {
     # """Calculate the number density of the material,
     # the mass and number densities of the constituent elements and
     # their isotopes."""
-    
+
     my(                 # e.g.
         $mat_href,      # %\moo3
         $enri_lev_type, # 'amt_frac'
         $is_verbose,    # 1 (boolean)
     ) = @_;
     my $avogadro = 6.02214076e+23; # Number of substances per mole
-    
+
     if ($is_verbose) {
         say "\n".("=" x 70);
         printf(
@@ -2118,11 +2145,11 @@ sub calc_mass_dens_and_num_dens {
         );
         say "=" x 70;
     }
-    
+
     #
     # (i) Material
     #
-    
+
     # Number density
     $mat_href->{num_dens} =
         $mat_href->{mass_dens} # Tabulated value
@@ -2130,12 +2157,12 @@ sub calc_mass_dens_and_num_dens {
         # Below had been calculated in:
         # calc_mat_molar_mass_and_subcomp_mass_fracs_and_dccs()
         / $mat_href->{molar_mass};
-    
+
     foreach my $elem_str (@{$mat_href->{consti_elems}}) {
         #
         # (ii) Constituent elements
         #
-        
+
         # Mass density
         #            $moo3{mo}{mass_dens}
         #             $moo3{o}{mass_dens}
@@ -2145,7 +2172,7 @@ sub calc_mass_dens_and_num_dens {
             $mat_href->{$elem_str}{mass_frac}
             #       $moo3{mass_dens}
             * $mat_href->{mass_dens};
-        
+
         # Number density
         # (i) Using the amount fraction
         #            $moo3{mo}{num_dens}
@@ -2157,7 +2184,7 @@ sub calc_mass_dens_and_num_dens {
             #       $moo3{num_dens}
             * $mat_href->{num_dens}
         ) if $enri_lev_type eq 'amt_frac';
-        
+
         # (ii) Using the mass fraction
         #            $moo3{mo}{num_dens}
         #             $moo3{o}{num_dens}
@@ -2170,11 +2197,11 @@ sub calc_mass_dens_and_num_dens {
             #                           $o{wgt_avg_molar_mass}
             / $mat_href->{$elem_str}{href}{wgt_avg_molar_mass}
         ) if $enri_lev_type eq 'mass_frac';
-        
+
         #
         # (iii) Isotopes of the consistent elements
         #
-        
+
         # $mo{mass_nums} = ['92', '94', '95', '96', '97', '98', '100']
         foreach my $mass_num (@{$mat_href->{$elem_str}{href}{mass_nums}}) {
             # Mass density
@@ -2184,7 +2211,7 @@ sub calc_mass_dens_and_num_dens {
                 $mat_href->{$elem_str.$mass_num}{mass_frac}
                 #              $moo3{mo}{mass_dens}
                 * $mat_href->{$elem_str}{mass_dens};
-            
+
             # Number density
             # (i) Using the amount fraction
             #                    $moo3{mo92}{num_dens}
@@ -2194,7 +2221,7 @@ sub calc_mass_dens_and_num_dens {
                 #              $moo3{mo}{num_dens}
                 * $mat_href->{$elem_str}{num_dens}
             ) if $enri_lev_type eq 'amt_frac';
-            
+
             # (ii) Using the mass fraction
             #                    $moo3{mo92}{num_dens}
             $mat_href->{$elem_str.$mass_num}{num_dens} = (
@@ -2206,55 +2233,88 @@ sub calc_mass_dens_and_num_dens {
             ) if $enri_lev_type eq 'mass_frac';
         }
     }
-    
+
     if ($is_verbose) {
         dump($mat_href);
         pause_shell("Press enter to continue...");
     }
-    
+
     return;
 }
 
 
 sub adjust_num_of_decimal_places {
     # """Adjust the number of decimal places of calculation results."""
-    
+
     my(
         $chem_hrefs,
         $precision_href,
         $enri_lev_range_first,
+        # To work on non-mat chem entities. Make it bool-true if consecutive
+        # calls of this routine are independent of each other.
+        # (DO NOT make it bool-true for calls from enrimo!)
+        $is_adjust_all,
     ) = @_;
     my $num_decimal_pts = length(substr($enri_lev_range_first, 2));
-    
+
     my %fmt_specifiers = (
+        #------------------------------------------------
+        # For reactant nuclide number density calculation
+        #------------------------------------------------
         molar_mass         => '%.5f', # Molar mass of a nuclide or a material
         wgt_molar_mass     => '%.5f', # Weighted molar mass of a nuclide
         wgt_avg_molar_mass => '%.5f', # Weighted-avg molar mass of an element
         amt_frac           => '%.'.$num_decimal_pts.'f',
         mass_frac          => '%.'.$num_decimal_pts.'f',
+        dens_ratio         => '%.5f',
         mass_dens          => '%.5f',
         num_dens           => '%.5e',
+        vol                => '%.5f',
+        mass               => '%.5f',
         dcc                => '%.4f', # Density change coefficient
+        #----------------------
+        # For yield calculation
+        #----------------------
+        # Irradiation conditions
+        avg_beam_curr => '%.2f',
+        end_of_irr    => '%.3f',
+        # Pointwise multiplication
+        nrg_ev        => '%.6e',
+        nrg_mega_ev   => '%.6f',
+        xs_micro      => '%.6e',
+        xs_macro      => '%.6e',
+        mc_flue       => '%.6e',
+        pwm_micro     => '%.6e',
+        pwm_macro     => '%.6e',
+        source_rate   => '%.6e',
+        reaction_rate => '%.6e',
+        # Yields
+        yield                 => '%.2f',
+        yield_per_microamp    => '%.2f',
+        sp_yield              => '%.2f',
+        sp_yield_per_microamp => '%.2f',
     );
     # Override the format specifiers if any have been
     # designated via the input file.
     $fmt_specifiers{$_} = $precision_href->{$_} for keys %$precision_href;
-    
+
     # Memorandum
     # - "DO NOT" change the number of decimal places of the element hashes.
-    #   If adjusted, the modified precision remains changed in the next run
-    #   of enri(), affecting all the other subsequent calculations that use
-    #   the attributes of the element hashes.
+    #   If adjusted, the modified precision remains changed in the consecutive
+    #   calls of this routine, affecting all the other subsequent calculations
+    #   that use the attributes of the element hashes.
     # - Instead, work ONLY on the materials hashes which will be recalculated
-    #   each time enri() is called.
+    #   each time before this routine is called.
     foreach my $attr (keys %fmt_specifiers) {
         # $k1 == o, mo, momet, moo2, moo3...
         foreach my $k1 (keys %$chem_hrefs) {
             #*******************************************************************
             # Work ONLY on materials.
             #*******************************************************************
-            next unless $chem_hrefs->{$k1}{data_type} =~ /mat/i;
-            
+            if (not defined $is_adjust_all or $is_adjust_all != 1) {
+                next unless $chem_hrefs->{$k1}{data_type} =~ /mat/i;
+            }
+
             if (
                 exists $chem_hrefs->{$k1}{$attr}
                 and ref \$chem_hrefs->{$k1}{$attr} eq SCALAR
@@ -2263,9 +2323,9 @@ sub adjust_num_of_decimal_places {
                 $chem_hrefs->{$k1}{$attr} = sprintf(
                     "$fmt_specifiers{$attr}",
                     $chem_hrefs->{$k1}{$attr},
-                )
+                );
             }
-            
+
             # $k2 == mass_dens, HASH (<= mo, o, mo92, ...)
             foreach my $k2 (%{$chem_hrefs->{$k1}}) {
                 # If $k2 == HASH (<= mo, o, mo92, ...)
@@ -2291,7 +2351,7 @@ sub adjust_num_of_decimal_places {
                             $k2->{$attr},
                         );
                     }
-                    
+
                     else {
                         # $moo3{mo}{amt_subs}
                         $k2->{$attr} = sprintf(
@@ -2303,14 +2363,14 @@ sub adjust_num_of_decimal_places {
             }
         }
     }
-    
+
     return;
 }
 
 
 sub assoc_prod_nucls_with_reactions_and_dccs {
     # """Associate product nuclides with nuclear reactions and DCCs."""
-    
+
     my(
         $chem_hrefs,           # e.g.
         $mat,                  # 'moo3'
@@ -2325,7 +2385,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
         $is_verbose,           # 1 (boolean)
     ) = @_;
     my $mat_href = $chem_hrefs->{$mat}, # \%moo3
-    
+
     my %elems = (
         # (key) Atomic number
         # (val) Element name and symbol
@@ -2989,12 +3049,12 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             },
         },
         44 => {symb => 'Ru', name => 'ruthenium' },
-        45 => {symb => 'Rh', name => 'Rhodium'   },
-        46 => {symb => 'Pd', name => 'Palladium' },
-        47 => {symb => 'Ag', name => 'Silver'    },
-        48 => {symb => 'Cd', name => 'Cadmium'   },
-        49 => {symb => 'In', name => 'Indium'    },
-        50 => {symb => 'Sn', name => 'Tin'       },
+        45 => {symb => 'Rh', name => 'rhodium'   },
+        46 => {symb => 'Pd', name => 'palladium' },
+        47 => {symb => 'Ag', name => 'silver'    },
+        48 => {symb => 'Cd', name => 'cadmium'   },
+        49 => {symb => 'In', name => 'indium'    },
+        50 => {symb => 'Sn', name => 'tin'       },
     );
     my %prod_nucls; # Storage for product nuclides
     my %parts = (
@@ -3061,7 +3121,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                 p => 1,
             },
         },
-        
+
         # Heterogeneous: Number of ejectiles are invariable.
         np => { # For neutron reactions
             num_neut => 1,
@@ -3088,7 +3148,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             num_prot => 4,
         },
     );
-    
+
     # Homogeneous ejectiles
     my %ejecs = (
         # (key) projectile
@@ -3105,17 +3165,17 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
         n => [qw(np an ann ap app)],
         p => [qw(pn an ann ap)],
     );
-    
+
     #
     # (1/2) Arithmetic for nuclear reaction channels
     #
-    
+
     # $moo3{consti_elems} = ['mo', 'o']
     foreach my $elem_str (@{$mat_href->{consti_elems}}) {
         # Redirect the atomic number of the constituent element
         # for clearer coding.
         my $atomic_num = $mat_href->{$elem_str}{href}{atomic_num};
-        
+
         # $mo{mass_nums} = ['92', '94', '95', '96', '97', '98', '100']
         foreach my $mass_num (@{$mat_href->{$elem_str}{href}{mass_nums}}) {
             # ('g', 'n', 'p')
@@ -3129,7 +3189,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                             $atomic_num
                             + $parts{$proj}{num_prot}
                             - $num_ejec * $parts{$ejec}{num_prot};
-                        
+
                         # Mass number of the product nuclide
                         my $new_mass_num =
                             $mass_num
@@ -3137,7 +3197,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                             + $parts{$proj}{num_prot}
                             - $num_ejec * $parts{$ejec}{num_neut}
                             - $num_ejec * $parts{$ejec}{num_prot};
-                        
+
                         # Autovivified
                         my $reaction = sprintf(
                             "%s%s%s%s%s",
@@ -3154,7 +3214,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                                 $mat_href->{$elem_str.$mass_num}{dcc};
                     }
                 }
-                
+
                 # Heterogeneous ejectiles
                 # e.g. ('np', 'an', 'ann', 'ap', 'app')
                 foreach my $ejecs (@{$ejecs_hetero{$proj}}) {
@@ -3163,7 +3223,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                         $atomic_num
                         + $parts{$proj}{num_prot}
                         - $parts{$ejecs}{num_prot};
-                    
+
                     # Mass number of the product nuclide
                     my $new_mass_num =
                         $mass_num
@@ -3171,7 +3231,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                         + $parts{$proj}{num_prot}
                         - $parts{$ejecs}{num_neut}
                         - $parts{$ejecs}{num_prot};
-                    
+
                     # Autovivified
                     my $reaction = sprintf(
                         "%s%s%s%s",
@@ -3187,7 +3247,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             }
         }
     }
-    
+
     #
     # (2/2) Generate reporting files.
     #
@@ -3231,10 +3291,10 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
         );
         my $nucls_rpt_fname = "$out_path/$nucls_rpt_bname.dat";
         unlink $nucls_rpt_fname if -e $nucls_rpt_fname and $is_first;
-        
+
         open my $nucls_rpt_fh, '>>:encoding(UTF-8)', $nucls_rpt_fname;
         select($nucls_rpt_fh);
-        
+
         # Front matter and warnings
         if ($is_first) {
             my $dt = DateTime->now(time_zone => 'local');
@@ -3266,7 +3326,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             say "#";
             say "#".("-" x 79);
         }
-        
+
         # Dataset header: Current enrichment level
         print $seps{dataset} unless $is_first; # Dataset separator
         say "#".("=" x 79);
@@ -3278,7 +3338,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             $mat,
         );
         say "#".("=" x 79);
-        
+
         # Layer 1: Chemical element
         my @elems_asc =
             sort { $a <=> $b } keys %{$prod_nucls{$proj}};
@@ -3292,7 +3352,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             print $elems{$elem}{symb} ? ")" : "";
             print "\n";
             say "#".("-" x 79);
-            
+
             # Layer 2: Isotope
             my @isots_asc =
                 sort { $a <=> $b } keys %{$prod_nucls{$proj}{$elem}};
@@ -3332,14 +3392,14 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                             )
                         );
                     }
-                    
+
                     # Mass number
                     printf(
                         "$convs{isot}%s",
                         $the_isot,
                         $seps{col},
                     );
-                    
+
                     # Half-life
                     printf(
                         (
@@ -3351,7 +3411,7 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
                     print $not_a_number
                         if not $elems{$elem}{$the_isot}{half_life};
                     print $seps{col};
-                    
+
                     # Layer 3: Nuclear reaction
                     (my $isot = $the_isot) =~ s/m$//i;
                     my @reacts_sorted =
@@ -3370,62 +3430,28 @@ sub assoc_prod_nucls_with_reactions_and_dccs {
             }
             print $seps{data_block} unless $elem == $elems_asc[-1];
         }
-        
+
         select(STDOUT);
         close $nucls_rpt_fh;
-        
+
         if ($enri_lev == $enri_lev_range_last) {
             say "[$nucls_rpt_fname] generated.";
         }
     }
     $is_first = 0; # Hook - off
-    
+
     if ($is_verbose) {
         dump(\%prod_nucls);
         pause_shell("Press enter to continue...");
     }
-    
+
     return;
 }
 
 
-sub enri_preproc {
-    # """Preprocessor for enri(): Populate chemical entity hashes and
-    # prepare for DCC calculation."""
-    
-    my @hnames_ordered = @{$_[0]->{hnames}};
-    my( # Strings to be used as the keys of %registry
-        $mat,
-        $enri_nucl_elem,
-        $enri_nucl_mass_num,
-        $enri_lev,
-    ) = @{$_[0]->{dcc_preproc}}{
-        'mat',
-        'enri_nucl_elem',
-        'enri_nucl_mass_num',
-        'enri_lev', # Used only for decimal places calculation
-    };
-    my $enri_lev_type       = $_[0]->{enri_lev_type};
-    my $min_depl_lev_global = $_[0]->{min_depl_lev_global};
-    my %min_depl_lev_local  = %{$_[0]->{min_depl_lev_local}}
-        if $_[0]->{min_depl_lev_local};
-    my $depl_order = $_[0]->{depl_order};
-    my $is_verbose = $_[0]->{is_verbose};
-    
-    # Notification
-    if ($is_verbose) {
-        say "\n".("=" x 70);
-        printf(
-            "[%s]\n",
-            join('::', (caller(0))[3])
-        );
-        say "=" x 70;
-        printf(
-            "populating the hashes of [%s]...\n",
-            join(', ', @hnames_ordered),
-        );
-    }
-    
+sub gen_chem_hrefs {
+    # """Generate href of chemical data hrefs."""
+
     #
     # Notes
     #
@@ -3444,7 +3470,7 @@ sub enri_preproc {
     #   the use of the array enables changing the order of the nuclides
     #   to be depleted in the process of the enrichment of a specific nuclide.
     #
-    
+
     #===========================================================================
     # Data: Chemical elements
     #===========================================================================
@@ -3857,7 +3883,7 @@ sub enri_preproc {
             wgt_molar_mass => 0,
         },
     );
-    
+
     #===========================================================================
     # Data: Materials
     #===========================================================================
@@ -3968,7 +3994,7 @@ sub enri_preproc {
         symb         => 'Au_{met}',
         name         => 'gold metal',
         molar_mass   => 0,
-        mass_dens    => 11.34,
+        mass_dens    => 19.3,
         num_dens     => 0,
         vol          => 0,
         mass         => 0,
@@ -3984,9 +4010,9 @@ sub enri_preproc {
             num_dens  => 0,
         },
     );
-    
+
     #===========================================================================
-    # The above hashes must be registered here.
+    # The above hashes must be registered to the hashes below.
     #===========================================================================
     my %elem_hrefs = (
         o  => \%o,
@@ -4002,8 +4028,55 @@ sub enri_preproc {
         moo3  => \%moo3,
         aumet => \%aumet,
     );
-    my %registry = (%elem_hrefs, %mat_hrefs);
-    
+    my %registry = (
+        %elem_hrefs,
+        %mat_hrefs,
+    );
+
+    return \%registry;
+}
+
+
+sub enri_preproc {
+    # """Preprocessor for enri(): Populate chemical entity hashes and
+    # prepare for DCC calculation."""
+
+    my @hnames_ordered = @{$_[0]->{hnames}};
+    my( # Strings to be used as the keys of %registry
+        $mat,
+        $enri_nucl_elem,
+        $enri_nucl_mass_num,
+        $enri_lev,
+    ) = @{$_[0]->{dcc_preproc}}{
+        'mat',
+        'enri_nucl_elem',
+        'enri_nucl_mass_num',
+        'enri_lev', # Used only for decimal places calculation
+    };
+    my $enri_lev_type       = $_[0]->{enri_lev_type};
+    my $min_depl_lev_global = $_[0]->{min_depl_lev_global};
+    my %min_depl_lev_local  = %{$_[0]->{min_depl_lev_local}}
+        if $_[0]->{min_depl_lev_local};
+    my $depl_order = $_[0]->{depl_order};
+    my $is_verbose = $_[0]->{is_verbose};
+
+    # Notification
+    if ($is_verbose) {
+        say "\n".("=" x 70);
+        printf(
+            "[%s]\n",
+            join('::', (caller(0))[3])
+        );
+        say "=" x 70;
+        printf(
+            "populating the hashes of [%s]...\n",
+            join(', ', @hnames_ordered),
+        );
+    }
+
+    # Generate chem hrefs.
+    my %registry = %{gen_chem_hrefs()};
+
     #===========================================================================
     # Additional data for nuclides: Set the minimum depletion levels
     # which will be used in enrich_or_deplete().
@@ -4025,7 +4098,7 @@ sub enri_preproc {
                     $min_depl_lev_global;
             }
         }
-        
+
         # Local minimum depletion levels: Overwrite 'min_depl_lev's if given.
         foreach my $elem (keys %min_depl_lev_local) {
             if ($registry{$chem_dat}{label} eq $elem) {
@@ -4041,7 +4114,7 @@ sub enri_preproc {
             }
         }
     }
-    
+
     #===========================================================================
     # (a) & (b) Calculate the mass fractions of the isotopes of the elements
     #           using their natural abundances.
@@ -4052,7 +4125,7 @@ sub enri_preproc {
         join(', ', @{$registry{$mat}->{consti_elems}}),
         $registry{$mat}->{label},
     ) if $is_verbose;
-    
+
     # (a) Calculate the weighted-average molar masses of the constituent
     #     elements of the material using the natural abundances
     #     (amount fractions) of their isotopes.
@@ -4061,7 +4134,7 @@ sub enri_preproc {
         'amt_frac',
         $is_verbose,
     );
-    
+
     # (b) Convert the amount fractions of the nuclides (the isotopes of
     #     the elements) to mass fractions.
     convert_fracs(
@@ -4069,7 +4142,7 @@ sub enri_preproc {
         'amt_to_mass',
         $is_verbose,
     );
-    
+
     # (c) Redistribute the enrichment levels of the nuclides to reflect
     #     the enrichment of the nuclide of interest.
     # - The use of a conversion (format specifier) for $dcc_for is necessary
@@ -4094,7 +4167,7 @@ sub enri_preproc {
         $depl_order,                # 'ascend'
         $is_verbose,                # 1 (boolean)
     );
-    
+
     # (d) Convert the redistributed enrichment levels.
     #     (i)  If the amount fraction represents the enrichment level,
     #          convert the redistributed amount fractions to mass fractions.
@@ -4109,7 +4182,7 @@ sub enri_preproc {
         ),
         $is_verbose, # e.g. 1 (boolean)
     );
-    
+
     # (e) Again calculate the weighted-average molar masses of the constituent
     #     elements, but now using the enrichment levels of their isotopes.
     #     (the enrichment level can either be 'amt_frac' or 'mass_frac'
@@ -4119,7 +4192,7 @@ sub enri_preproc {
         $enri_lev_type,  # e.g. 'amt_frac' or 'mass_frac'
         $is_verbose,     # e.g. 1 (boolean)
     );
-    
+
     # (f) Calculate:
     # - The molar mass of the material using the weighted-average
     #   molar masses of its constituent elements obtained in (e)
@@ -4141,7 +4214,7 @@ sub enri_preproc {
         $is_verbose,     # e.g. 1 (boolean)
         'dcc_preproc',   # Tells the routine that it's a preproc call
     );
-    
+
     # Return a hash of chemical entity hashes.
     my %chem_hrefs;
     foreach my $hname (@hnames_ordered) {
@@ -4153,7 +4226,7 @@ sub enri_preproc {
 
 sub enri {
     # """Calculate enrichment-dependent quantities."""
-    
+
     my(                      # e.g.
         $chem_hrefs,         # {o => \%o, mo => \%mo, momet => \%momet, ...}
         $mat,                # momet, moo2, moo3, ...
@@ -4164,7 +4237,7 @@ sub enri {
         $depl_order,         # 'ascend'
         $is_verbose,         # 1 (boolean)
     ) = @_;
-    
+
     # (1) Redistribute the enrichment levels of the nuclides to reflect
     #     the enrichment of the nuclide of interest.
     my $is_exit = enrich_or_deplete(    # e.g.
@@ -4176,7 +4249,7 @@ sub enri {
         $is_verbose,                    # 1 (boolean)
     );
     return $is_exit if $is_exit; # Use it as a signal "not" to accumulate data.
-    
+
     # (2) Convert the redistributed enrichment levels.
     convert_fracs(              # e.g.
         $chem_hrefs->{$mat},    # \%moo3
@@ -4187,7 +4260,7 @@ sub enri {
         ),
         $is_verbose,            # 1 (boolean)
     );
-    
+
     # (3) Calculate the weighted-average molar masses of the constituent
     #     elements using the enrichment levels of their isotopes.
     calc_consti_elem_wgt_avg_molar_masses(
@@ -4195,7 +4268,7 @@ sub enri {
         $enri_lev_type,      # 'amt_frac' or 'mass_frac'
         $is_verbose,         # 1 (boolean)
     );
-    
+
     # (4) Calculate:
     # - The molar mass of the material using the weighted-average
     #   molar masses of its constituent elements obtained in (3)
@@ -4210,7 +4283,7 @@ sub enri {
         $enri_lev_type,      # 'amt_frac' or 'mass_frac'
         $is_verbose,         # 1 (boolean)
     );
-    
+
     # (5) Calculate:
     # - Number density of the material
     # - Mass and number densities of the constituent elements and
@@ -4220,14 +4293,14 @@ sub enri {
         $enri_lev_type,      # 'amt_frac' or 'mass_frac'
         $is_verbose,         # 1 (boolean)
     );
-    
+
     return;
 }
 
 
 sub enri_postproc {
     # """Postprocessor for enri()"""
-    
+
     my(
         $chem_hrefs,           # e.g.
         $mat,                  # 'moo3'
@@ -4242,14 +4315,14 @@ sub enri_postproc {
         $precision_href,
         $is_verbose,           # 1 (boolean)
     ) = @_;
-    
+
     # (6) Adjust the number of decimal places of calculation results.
     adjust_num_of_decimal_places(
         $chem_hrefs,
         $precision_href,
         $enri_lev_range_first,
     );
-    
+
     # (7) Associate product nuclides with nuclear reactions and DCCs.
     assoc_prod_nucls_with_reactions_and_dccs(
         $chem_hrefs,
@@ -4264,7 +4337,7 @@ sub enri_postproc {
         $projs,
         $is_verbose,
     );
-    
+
     return;
 }
 #-------------------------------------------------------------------------------
@@ -4272,14 +4345,14 @@ sub enri_postproc {
 
 sub parse_argv {
     # """@ARGV parser"""
-    
+
     my(
         $argv_aref,
         $cmd_opts_href,
         $run_opts_href,
     ) = @_;
     my %cmd_opts = %$cmd_opts_href; # For regexes
-    
+
     # Parser: Overwrite default run options if requested by the user.
     my $field_sep = ',';
     foreach (@$argv_aref) {
@@ -4293,12 +4366,12 @@ sub parse_argv {
                 @{$run_opts_href->{mats}} = split /$field_sep/;
             }
         }
-        
+
         # Mo isotope to be enriched
         if (/$cmd_opts{enri_nucl}/) {
             ($run_opts_href->{enri_nucl} = $_) =~ s/$cmd_opts{enri_nucl}//;
         }
-        
+
         # Fraction type to denote the enrichment level
         if (/$cmd_opts{enri_lev_type}/) {
             ($run_opts_href->{enri_lev_type} = $_) =~
@@ -4308,38 +4381,37 @@ sub parse_argv {
                       " type [amt_frac] or [mass_frac].\n";
             }
         }
-        
+
         # Range of enrichment levels
         if (/$cmd_opts{enri_lev_range}/) {
             s/$cmd_opts{enri_lev_range}//;
             @{$run_opts_href->{enri_lev_range}} = split /$field_sep/;
         }
-        
+
         # Global minimum depletion level
         if (/$cmd_opts{min_depl_lev_global}/) {
             ($run_opts_href->{min_depl_lev_global} = $_) =~
                 s/$cmd_opts{min_depl_lev_global}//;
         }
-        
+
         # Depletion order
         if (/$cmd_opts{depl_order}/) {
             ($run_opts_href->{depl_order} = $_) =~
                 s/$cmd_opts{depl_order}//;
         }
-        
+
         # Input file
         if (/$cmd_opts{inp}/) {
             ($run_opts_href->{inp} = $_) =~
                 s/$cmd_opts{inp}//;
         }
-        
+
         # Output path
         if (/$cmd_opts{out_path}/) {
             s/$cmd_opts{out_path}//;
-            ($run_opts_href->{out_path} = $_) =~
-                s/$cmd_opts{out_path}//;
+            $run_opts_href->{out_path} = $_;
         }
-        
+
         # Output formats
         if (/$cmd_opts{out_fmts}/) {
             s/$cmd_opts{out_fmts}//;
@@ -4350,7 +4422,7 @@ sub parse_argv {
                 @{$run_opts_href->{out_fmts}} = split /$field_sep/;
             }
         }
-        
+
         # Projectiles
         if (/$cmd_opts{projs}/) {
             s/$cmd_opts{projs}//;
@@ -4361,32 +4433,32 @@ sub parse_argv {
                 @{$run_opts_href->{projs}} = split /$field_sep/;
             }
         }
-        
+
         # Calculation processes will be displayed.
         if (/$cmd_opts{verbose}/) {
             $run_opts_href->{is_verbose} = 1;
         }
-        
+
         # The front matter won't be displayed at the beginning of the program.
         if (/$cmd_opts{nofm}/) {
             $run_opts_href->{is_nofm} = 1;
         }
-        
+
         # The shell won't be paused at the end of the program.
         if (/$cmd_opts{nopause}/) {
             $run_opts_href->{is_nopause} = 1;
         }
     }
-    
+
     return;
 }
 
 
 sub parse_inp {
     # """Input file parser"""
-    
+
     my $run_opts_href = shift;
-    
+
     # Parser: Overwrite default run options if requested by the input file.
     my %seps = (
         key_val    => qr/\s*=\s*/,
@@ -4399,7 +4471,7 @@ sub parse_inp {
         next if /^\s*#/; # Skip a comment line.
         s/^\s+//;        # Suppress leading blanks.
         s/\s*#.*//;      # Suppress a trailing comment.
-        
+
         # Local minimum depletion levels
         # e.g. [min_depl_lev_local.mo.92 = 0.00005] in the input file
         #      => [$run_opts_href->{min_depl_lev_local}{mo}{92} = 0.00005;] here
@@ -4407,32 +4479,32 @@ sub parse_inp {
             my($key, $val) = (split /$seps{key_val}/)[0, 1];
             (my $subkey = $key) =~ s/min_depl_lev_local$seps{key_subkey}//;
             my($elem, $mass_num) = (split /$seps{key_subkey}/, $subkey)[0, 1];
-            
+
             $run_opts_href->{min_depl_lev_local}{$elem}{$mass_num} = $val;
         }
-        
+
         # Calculation precision
         if (/precision/i) {
             my($key, $val) = (split /$seps{key_val}/)[0, 1];
             (my $subkey = $key) =~ s/precision$seps{key_subkey}//;
-            
+
             $run_opts_href->{precision_href}{$subkey} = $val;
         }
     }
     close $inp_fh;
-    
+
     return;
 }
 
 
 sub outer_enri {
     # """enrimo outer layer"""
-    
+
     my $run_opts_href  = shift;
     my $prog_info_href = shift;
     my $chem_hrefs = {};
     my $out_arefs  = {};
-    
+
     foreach my $mat (@{$run_opts_href->{mats}}) {
         # Prepare DCC calculation data.
         $chem_hrefs = enri_preproc(
@@ -4459,7 +4531,7 @@ sub outer_enri {
                 is_verbose          => $run_opts_href->{is_verbose},
             },
         );
-        
+
         printf(
             "\n%s\n[%s]\n%s\n",
             '=' x 70,
@@ -4497,7 +4569,7 @@ sub outer_enri {
                 $run_opts_href->{is_verbose},
             );
         }
-        
+
         write_to_data_files(
             $run_opts_href,
             $prog_info_href,
@@ -4511,14 +4583,14 @@ sub outer_enri {
             $run_opts_href->{depl_order},
         );
     }
-    
+
     return;
 }
 
 
 sub inner_enri {
     # """enrimo inner layer"""
-    
+
     my(
         $chem_hrefs,
         $out_arefs,
@@ -4536,7 +4608,7 @@ sub inner_enri {
         $precision_href,
         $is_verbose,
     ) = @_;
-    
+
     # (1)--(5)
     # Redistribute the fraction quantities of Mo isotopes and
     # calculate DCCs.
@@ -4551,7 +4623,7 @@ sub inner_enri {
         $is_verbose,
     );
     return if $is_exit;
-    
+
     # (6)--(7)
     # Adjust the numbers of decimal places and associate
     # product nuclides with nuclear reactions and DCCs.
@@ -4569,7 +4641,7 @@ sub inner_enri {
         $precision_href,
         $is_verbose,
     );
-    
+
     # (8) Construct row-wise data for write_to_data_files().
     $out_arefs->{$mat} = []
         if not exists $out_arefs->{$mat};
@@ -4594,7 +4666,7 @@ sub inner_enri {
         $chem_hrefs->{$mat}{o16}{dcc},
         $chem_hrefs->{$mat}{o17}{dcc},
         $chem_hrefs->{$mat}{o18}{dcc};
-    
+
     return;
 }
 
@@ -4659,7 +4731,7 @@ sub write_to_data_files {
                                      'rand'
         ),
     );
-    
+
     reduce_data(
         { # Settings
             rpt_formats => $run_opts_href->{out_fmts},
@@ -4757,14 +4829,14 @@ sub write_to_data_files {
             data_sep  => {dat => " ", csv => ","},
         }
     );
-    
+
     return;
 }
 
 
 sub enrimo {
     # """enrimo main routine"""
-    
+
     if (@ARGV) {
         my %prog_info = (
             titl       => basename($0, '.pl'),
@@ -4774,9 +4846,9 @@ sub enrimo {
             date_first => $FIRST,
             auth       => {
                 name => 'Jaewoong Jang',
-                posi => 'PhD student',
-                affi => 'University of Tokyo',
-                mail => 'jan9@korea.ac.kr',
+#                posi => '',
+#                affi => '',
+                mail => 'jangj@korea.ac.kr',
             },
         );
         my %cmd_opts = ( # Command-line opts
@@ -4811,7 +4883,7 @@ sub enrimo {
             is_nofm             => 0,
             is_nopause          => 0,
         );
-        
+
         # ARGV validation and parsing
         validate_argv(\@ARGV, \%cmd_opts);
         parse_argv(\@ARGV, \%cmd_opts, \%run_opts);
@@ -4819,21 +4891,34 @@ sub enrimo {
         construct_range($run_opts{enri_lev_range});
         ($run_opts{enri_nucl_elem} = $run_opts{enri_nucl}) =~ s/[^a-zA-Z]//g;
         ($run_opts{enri_nucl_mass_num} = $run_opts{enri_nucl}) =~ s/[^0-9]//g;
-        
+
         # Notification - beginning
         show_front_matter(\%prog_info, 'prog', 'auth', 'no_trailing_blkline')
             unless $run_opts{is_nofm};
-        
+#        printf(
+#            "%s version: %s (%s)\n",
+#            $My::Toolset::PACKNAME,
+#            $My::Toolset::VERSION,
+#            $My::Toolset::LAST,
+#            );
+#        printf(
+#            "%s version: %s (%s)\n",
+#            $My::Nuclear::PACKNAME,
+#            $My::Nuclear::VERSION,
+#            $My::Nuclear::LAST,
+#        );
+
         # Main
         outer_enri(\%run_opts, \%prog_info);
-        
+
         # Notification - end
         show_elapsed_real_time("\n");
-        pause_shell() unless $run_opts{is_nopause};
+        pause_shell()
+            unless $run_opts{is_nopause};
     }
-    
+
     system("perldoc \"$0\"") if not @ARGV;
-    
+
     return;
 }
 
@@ -4861,7 +4946,7 @@ enrimo - Investigate the influence of an enriched Mo isotope
     and companion isotopes.
     The following quantities, as functions of the enrichment level of
     the Mo isotope to be enriched, are calculated for a Mo material:
-    - Amount fractions and and mass fractions of Mo and O isotopes
+    - Amount fractions and mass fractions of Mo and O isotopes
     - Mass fractions of Mo and O elements
     - Mass and number densities of the Mo material, Mo and O elements,
       and their isotopes
@@ -4983,9 +5068,13 @@ enrimo - Investigate the influence of an enriched Mo isotope
 
 L<enrimo on GitHub|https://github.com/jangcom/enrimo>
 
+L<enrimo on Zenodo|https://doi.org/10.5281/zenodo.2628760>
+
+L<enrimo in a paper: I<J. Phys. Commun.> B<3>, 055015|https://iopscience.iop.org/article/10.1088/2399-6528/ab1d6b>
+
 =head1 AUTHOR
 
-Jaewoong Jang <jan9@korea.ac.kr>
+Jaewoong Jang <jangj@korea.ac.kr>
 
 =head1 COPYRIGHT
 

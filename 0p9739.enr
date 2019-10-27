@@ -1,9 +1,14 @@
 # Input file for enrimo.pl
 # Mo-100 enrichment level: 0.9739 (Trace Sciences Int'l, Canada)
 # > http://www.tracesciences.com/mo.htm
-# > Celler, PMB (2011)
-# > Hou, PMB (2012)
-# > Martin, JRNC (2017)
+# > celler2011.pdf
+# > hou2012.pdf
+# > hou2014.pdf
+# > benard2014.pdf
+# > mangera2015.pdf
+# > tanguay2015.pdf
+# > hou2016.pdf
+# > martin2017.pdf
 
 # Local minimum depletion levels
 min_depl_lev_local.mo.92 = 0.00005
