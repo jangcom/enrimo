@@ -1,10 +1,6 @@
-# github archive
-github/
-
 # enrimo records
 bak_enrimo.pl/
 enrimo_baker.bat
-updates.txt
 
 # enrimo aux and result files
 figs/
@@ -15,7 +11,6 @@ utils/
 xs/
 0p9742.enr
 0p99*.enr
-deployer_to_phd_diss_code.bat
 jpap*.bat
 
 # MSWin link files
