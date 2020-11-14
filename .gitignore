@@ -1,12 +1,11 @@
 # enrimo records
-bak_enrimo.pl/
-enrimo_baker.bat
+bak_*
+*_baker.bat
 
 # enrimo aux and result files
-figs/
+docs/figs/
+docs/refs/
 mo100*/
-old/
-refs/
 utils/
 xs/
 0p9742.enr
@@ -15,9 +14,3 @@ jpap*.bat
 
 # MSWin link files
 *.lnk
-
-# POD-related
-enrimo_usage.bat
-enrimo.html
-pod2htmd.tmp
-enrimo_pod2html.bat
