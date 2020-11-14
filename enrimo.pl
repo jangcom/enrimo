@@ -15,8 +15,8 @@ use constant ARRAY  => ref [];
 use constant HASH   => ref {};
 
 
-our $VERSION = '1.06';
-our $LAST    = '2019-10-27';
+our $VERSION = '1.05';
+our $LAST    = '2020-11-14';
 our $FIRST   = '2018-09-21';
 
 
@@ -4932,12 +4932,12 @@ enrimo - Investigate the influence of an enriched Mo isotope
 
 =head1 SYNOPSIS
 
-    perl enrimo.pl [-materials=mo_mat ...] [-isotope=mo_isot]
-                   [-enri_lev_type=frac_type] [-enri_lev_range=frac_range]
-                   [-min_depl_lev_global=enri_lev] [-depl_order=option]
-                   [-inp=fname] [-out_path=path] [-out_fmts=ext ...]
-                   [-projectiles=particle ...]
-                   [-verbose] [-nofm] [-nopause]
+    perl enrimo.pl [--materials=mo_mat ...] [--isotope=mo_isot]
+                   [--enri_lev_type=frac_type] [--enri_lev_range=frac_range]
+                   [--min_depl_lev_global=enri_lev] [--depl_order=option]
+                   [--inp=fname] [--out_path=path] [--out_fmts=ext ...]
+                   [--projectiles=particle ...]
+                   [--verbose] [--nofm] [--nopause]
 
 =head1 DESCRIPTION
 
@@ -4956,7 +4956,7 @@ enrimo - Investigate the influence of an enriched Mo isotope
 
     Multiple values are separated by the comma (,).
 
-    -materials=mo_mat ... (short: -mats, default: momet)
+    --materials=mo_mat ... (short: --mats, default: momet)
         all
             All of the following mo_mat's.
         momet
@@ -4966,7 +4966,7 @@ enrimo - Investigate the influence of an enriched Mo isotope
         moo3
             Mo(VI) oxide (aka Mo trioxide)
 
-    -isotope=mo_isot (short: -isot, default: mo100)
+    --isotope=mo_isot (short: --isot, default: mo100)
         Mo isotope to be enriched.
         mo92
         mo94
@@ -4976,24 +4976,24 @@ enrimo - Investigate the influence of an enriched Mo isotope
         mo98  <= Mo-98(n,g)Mo-99
         mo100 <= Mo-100(g,n)Mo-99, Mo-100(n,2n)Mo-99, Mo-100(p,2n)Tc-99m
 
-    -enri_lev_type=frac_type (short: -type, default: amt_frac)
+    --enri_lev_type=frac_type (short: --type, default: amt_frac)
         The fraction type to refer to the enrichment level.
         amt_frac
         mass_frac
 
-    -enri_lev_range=frac_range (short: -range, default: 0,0.0001,1)
+    --enri_lev_range=frac_range (short: --range, default: 0,0.0001,1)
         The range of enrichment levels to be examined.
         e.g. 0.1,0.5     (beg,end; incre is automatically determined)
         e.g. 0,0.001,1   (beg,incre,end)
         e.g. 0,0.00001,1 (beg,incre,end)
 
-    -min_depl_lev_global=enri_lev (short: -global, default: 0.0000)
+    --min_depl_lev_global=enri_lev (short: --global, default: 0.0000)
         The minimum depletion level that applies to all the nuclides
         associated with the designated Mo materials. Overridden, if given,
         by nuclide-specific minimum depletion levels.
         e.g. 0.0007
 
-    -depl_order=option (short: -order, default: ascend)
+    --depl_order=option (short: --order, default: ascend)
         The order in which the Mo isotopes other than the to-be-enriched one
         will be depleted.
         ascend (short: asc)
@@ -5003,15 +5003,15 @@ enrimo - Investigate the influence of an enriched Mo isotope
         random (short: rand, alt: shuffle)
             Random order
 
-    -inp=fname (short: -i)
+    --inp=fname (short: -i)
         An input file specifying the nuclide-specific minimum depletion levels
         and the calculation precision. See the sample input file for the syntax.
         e.g. 0p9739.enr
 
-    -out_path=path (short: -path, default: the value of -isotope)
+    --out_path=path (short: --path, default: the value of -isotope)
         Path for the output files.
 
-    -out_fmts=ext ... (short: -o, default: dat,xlsx)
+    --out_fmts=ext ... (short: -o, default: dat,xlsx)
         Output file formats.
         all
             All of the following ext's.
@@ -5028,7 +5028,7 @@ enrimo - Investigate the influence of an enriched Mo isotope
         yaml
             YAML
 
-    -projectiles=particle ... (short: -projs, default: none)
+    --projectiles=particle ... (short: --projs, default: none)
         Reaction projectiles for associating the product nuclides with DCCs.
         If designated, the relevant reporting files are generated
         in addition to the default output files.
@@ -5041,23 +5041,23 @@ enrimo - Investigate the influence of an enriched Mo isotope
         p
             Proton <= Mo-100(p,2n)Tc-99m
 
-    -verbose (short: -verb)
+    --verbose (short: --verb)
         Display the calculation process in real time. This will pause
         the shell each time a core calculation routine is called; use it
         only when debugging or checking part of the calculation process.
 
-    -nofm
+    --nofm
         The front matter will not be displayed at the beginning of program.
 
-    -nopause
+    --nopause
         The shell will not be paused at the end of program.
         Use it for a batch run.
 
 =head1 EXAMPLES
 
-    perl enrimo.pl -type=mass_frac -range=0,0.00001,1
-    perl enrimo.pl -mats=moo3 -global=0.0005 -verb
-    perl enrimo.pl -mats=momet,moo3 -range=0.0974,0.0001,0.9739 -inp=0p9739.enr
+    perl enrimo.pl --type=mass_frac --range=0,0.00001,1
+    perl enrimo.pl --mats=moo3 --global=0.0005 --verb
+    perl enrimo.pl --mats=momet,moo3 --range=0.0974,0.0001,0.9739 --inp=0p9739.enr
 
 =head1 REQUIREMENTS
 
@@ -5070,7 +5070,7 @@ L<enrimo on GitHub|https://github.com/jangcom/enrimo>
 
 L<enrimo on Zenodo|https://doi.org/10.5281/zenodo.2628760>
 
-L<enrimo in a paper: I<J. Phys. Commun.> B<3>, 055015|https://iopscience.iop.org/article/10.1088/2399-6528/ab1d6b>
+L<enrimo in a paper: I<J. Phys. Commun.> B<3> (2019) 055015|https://doi.org/10.1088/2399-6528/ab1d6b>
 
 =head1 AUTHOR
 
@@ -5078,7 +5078,7 @@ Jaewoong Jang <jangj@korea.ac.kr>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2018-2019 Jaewoong Jang
+Copyright (c) 2018-2020 Jaewoong Jang
 
 =head1 LICENSE
 
