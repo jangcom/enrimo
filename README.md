@@ -1,3 +1,8 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1476349.svg)](https://doi.org/10.5281/zenodo.1476349)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-https%3A%2F%2Fjangcom.github.io%2Fenrimo-brightgreen)](https://jangcom.github.io/enrimo/)
+
+---
+
 # NAME
 
 enrimo - Investigate the influence of an enriched Mo isotope
